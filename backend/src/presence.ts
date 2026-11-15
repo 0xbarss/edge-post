@@ -39,6 +39,16 @@ export class Presence {
     return changed;
   }
 
+  async sweepNow(now: Date = new Date()): Promise<number[]> {
+    const changed = await sweepPresence(this.pool, now);
+
+    if (changed.length > 0) {
+      this.logger.info({ deviceIds: changed }, 'devices marked offline by sweep');
+    }
+
+    return changed;
+  }
+
   startSweep(intervalMs: number = PRESENCE_SWEEP_INTERVAL_MS): () => void {
     let running = false;
 
@@ -62,11 +72,7 @@ export class Presence {
 
   private async sweepOnce(): Promise<void> {
     try {
-      const changed = await sweepPresence(this.pool, new Date());
-
-      if (changed.length > 0) {
-        this.logger.info({ deviceIds: changed }, 'devices marked offline by sweep');
-      }
+      await this.sweepNow();
     } catch (error) {
       this.logger.error({ err: error }, 'presence sweep failed');
     }
