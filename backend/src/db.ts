@@ -77,8 +77,8 @@ export async function ingestReading(
     const devices = await queryRows<Device>(
       client,
       `
-        INSERT INTO devices (device_id, name, sample_rate)
-        VALUES ($1, $2, $3)
+        INSERT INTO devices (device_id, name, sample_rate, status)
+        VALUES ($1, $2, $3, 'online')
         ON CONFLICT (device_id) DO UPDATE
           SET last_seen   = now(),
               status      = 'online',
