@@ -1,0 +1,11 @@
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  cert-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-signed-bitwise,
+  -cert-err33-c,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'firmware/.*'
+FormatStyle: file
