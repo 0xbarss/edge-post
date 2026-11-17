@@ -1,7 +1,8 @@
-#include "command.h"
+#include "../command.h"
 
-#include "config.h"
-#include "frame.h"
+#include "../config.h"
+#include "../frame.h"
+#include "fakes.h"
 #include "frame_vectors.h"
 #include "test_support.h"
 
@@ -10,32 +11,6 @@
 #define TEST_DEVICE_ID 0x1234u
 #define TEST_COMMAND_ID 42u
 #define TEST_POLL_TIMEOUT_MS 100u
-#define MAX_CAPTURED_SENDS 4
-
-typedef struct {
-    int16_t temperature_tenths;
-    uint8_t gpio_state;
-    uint8_t sample_rate;
-    sensor_error_t write_error;
-    sensor_error_t set_rate_error;
-    int write_calls;
-    uint8_t last_pin;
-    uint8_t last_state;
-    int set_rate_calls;
-    uint8_t last_rate;
-} fake_sensors_t;
-
-typedef struct {
-    uint8_t incoming[FRAME_MAX_SIZE];
-    size_t incoming_length;
-    tcp_client_error_t receive_error;
-    int fail_send_call;
-    int send_calls;
-    int receive_calls;
-    size_t sent_count;
-    uint8_t sent[MAX_CAPTURED_SENDS][FRAME_MAX_SIZE];
-    size_t sent_lengths[MAX_CAPTURED_SENDS];
-} fake_client_t;
 
 typedef struct {
     fake_sensors_t sensors;
@@ -45,133 +20,11 @@ typedef struct {
     command_context_t context;
 } fixture_t;
 
-static sensor_error_t fake_read_temperature(void *context, int16_t *tenths) {
-    const fake_sensors_t *fake = context;
-
-    if (fake == NULL || tenths == NULL) {
-        return SENSOR_ERROR_ARGUMENT;
-    }
-
-    *tenths = fake->temperature_tenths;
-    return SENSOR_OK;
-}
-
-static sensor_error_t fake_read_gpio_state(void *context, uint8_t *state) {
-    const fake_sensors_t *fake = context;
-
-    if (fake == NULL || state == NULL) {
-        return SENSOR_ERROR_ARGUMENT;
-    }
-
-    *state = fake->gpio_state;
-    return SENSOR_OK;
-}
-
-static sensor_error_t fake_write_gpio_pin(void *context, uint8_t pin, uint8_t state) {
-    fake_sensors_t *fake = context;
-
-    if (fake == NULL) {
-        return SENSOR_ERROR_ARGUMENT;
-    }
-
-    if (pin > 7u) {
-        return SENSOR_ERROR_PIN;
-    }
-
-    if (state > 1u) {
-        return SENSOR_ERROR_STATE;
-    }
-
-    fake->write_calls += 1;
-    fake->last_pin = pin;
-    fake->last_state = state;
-
-    return fake->write_error;
-}
-
-static sensor_error_t fake_set_sample_rate(void *context, uint8_t seconds) {
-    fake_sensors_t *fake = context;
-
-    if (fake == NULL) {
-        return SENSOR_ERROR_ARGUMENT;
-    }
-
-    if (seconds == 0u) {
-        return SENSOR_ERROR_RATE;
-    }
-
-    fake->set_rate_calls += 1;
-    fake->last_rate = seconds;
-
-    if (fake->set_rate_error == SENSOR_OK) {
-        fake->sample_rate = seconds;
-    }
-
-    return fake->set_rate_error;
-}
-
-static uint8_t fake_get_sample_rate(void *context) {
-    const fake_sensors_t *fake = context;
-
-    if (fake == NULL) {
-        return 0u;
-    }
-
-    return fake->sample_rate;
-}
-
-static tcp_client_error_t fake_send(void *context, const uint8_t *bytes, size_t length) {
-    fake_client_t *fake = context;
-
-    if (fake == NULL || bytes == NULL || length > FRAME_MAX_SIZE) {
-        return TCP_CLIENT_ERROR_ARGUMENT;
-    }
-
-    fake->send_calls += 1;
-
-    if (fake->fail_send_call != 0 && fake->send_calls == fake->fail_send_call) {
-        return TCP_CLIENT_ERROR_IO;
-    }
-
-    if (fake->sent_count < MAX_CAPTURED_SENDS) {
-        memcpy(fake->sent[fake->sent_count], bytes, length);
-        fake->sent_lengths[fake->sent_count] = length;
-        fake->sent_count += 1;
-    }
-
-    return TCP_CLIENT_OK;
-}
-
-static tcp_client_error_t fake_receive(void *context, uint8_t *buffer, size_t capacity,
-                                       size_t *length, uint32_t timeout_ms) {
-    fake_client_t *fake = context;
-
-    (void)timeout_ms;
-
-    if (fake == NULL || buffer == NULL || length == NULL) {
-        return TCP_CLIENT_ERROR_ARGUMENT;
-    }
-
-    fake->receive_calls += 1;
-
-    if (fake->receive_error != TCP_CLIENT_OK) {
-        return fake->receive_error;
-    }
-
-    if (capacity < fake->incoming_length) {
-        return TCP_CLIENT_ERROR_ARGUMENT;
-    }
-
-    memcpy(buffer, fake->incoming, fake->incoming_length);
-    *length = fake->incoming_length;
-
-    return TCP_CLIENT_OK;
-}
-
 static void fixture_init(fixture_t *fixture) {
     memset(fixture, 0, sizeof *fixture);
 
-    fixture->sensors.sample_rate = 5u;
+    fake_sensors_init(&fixture->sensors, 5u);
+    fake_client_init(&fixture->client);
 
     fixture->sensor_interface.context = &fixture->sensors;
     fixture->sensor_interface.read_temperature_tenths = fake_read_temperature;
@@ -181,6 +34,7 @@ static void fixture_init(fixture_t *fixture) {
     fixture->sensor_interface.get_sample_rate = fake_get_sample_rate;
 
     fixture->client_interface.context = &fixture->client;
+    fixture->client_interface.connect = fake_connect;
     fixture->client_interface.send = fake_send;
     fixture->client_interface.receive = fake_receive;
 
