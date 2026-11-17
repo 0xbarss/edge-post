@@ -5,20 +5,28 @@ SANITIZER_FLAGS ?= -fsanitize=address,undefined -fno-omit-frame-pointer
 CPPFLAGS ?= -I.
 
 BUILD_DIR := build
-FRAME_SOURCES := frame.c
-TEST_SOURCES := tests/frame_test.c
-FORMAT_SOURCES := frame.c frame.h tests/frame_test.c
+PRODUCT_SOURCES := frame.c command.c
+FIRMWARE_HEADERS := $(wildcard *.h)
+TEST_SOURCES := $(wildcard tests/*.c)
+TEST_HEADERS := $(wildcard tests/*.h)
+FORMAT_SOURCES := $(PRODUCT_SOURCES) $(FIRMWARE_HEADERS) $(TEST_SOURCES) $(TEST_HEADERS)
+TEST_BINARIES := $(BUILD_DIR)/frame_test $(BUILD_DIR)/command_test
 
 .PHONY: all test format format-check lint clean
 
 all: test
 
-test: $(BUILD_DIR)/frame_test
+test: $(TEST_BINARIES)
 	./$(BUILD_DIR)/frame_test
+	./$(BUILD_DIR)/command_test
 
-$(BUILD_DIR)/frame_test: $(FRAME_SOURCES) $(TEST_SOURCES) frame.h
+$(BUILD_DIR)/frame_test: frame.c frame.h $(TEST_HEADERS) tests/frame_test.c
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SANITIZER_FLAGS) -o $@ $(FRAME_SOURCES) $(TEST_SOURCES)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SANITIZER_FLAGS) -o $@ frame.c tests/frame_test.c
+
+$(BUILD_DIR)/command_test: frame.c command.c $(FIRMWARE_HEADERS) $(TEST_HEADERS) tests/command_test.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SANITIZER_FLAGS) -o $@ frame.c command.c tests/command_test.c
 
 format:
 	clang-format -i $(FORMAT_SOURCES)
@@ -27,7 +35,7 @@ format-check:
 	clang-format --dry-run --Werror $(FORMAT_SOURCES)
 
 lint:
-	clang-tidy $(FRAME_SOURCES) $(TEST_SOURCES) -- $(CPPFLAGS) $(CFLAGS)
+	clang-tidy $(PRODUCT_SOURCES) $(TEST_SOURCES) -- $(CPPFLAGS) $(CFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR)
