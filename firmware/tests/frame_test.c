@@ -1,48 +1,9 @@
 #include "frame.h"
 
-#include <stdio.h>
+#include "frame_vectors.h"
+#include "test_support.h"
+
 #include <string.h>
-
-static int failures;
-
-static void check_impl(int condition, const char *expression, const char *file, int line) {
-    if (condition == 0) {
-        fprintf(stderr, "%s:%d: check failed: %s\n", file, line, expression);
-        failures += 1;
-    }
-}
-
-#define CHECK(condition) check_impl((condition) != 0, #condition, __FILE__, __LINE__)
-
-static const uint8_t READING_VECTOR[FRAME_SIZE_READING] = {
-    0xEE, 0x50, 0x12, 0x34, 0x00, 0x07, 0x6A, 0xF9, 0x9E, 0xC0, 0x00, 0xEA, 0x05, 0x05, 0x53,
-};
-
-static const uint8_t POLL_VECTOR[FRAME_SIZE_POLL] = {0xEE, 0x52, 0x12, 0x34, 0xA3};
-
-static const uint8_t COMMAND_NONE_VECTOR[FRAME_SIZE_COMMAND] = {
-    0xEE, 0x53, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x25,
-};
-
-static const uint8_t COMMAND_SET_RATE_VECTOR[FRAME_SIZE_COMMAND] = {
-    0xEE, 0x53, 0x12, 0x34, 0x00, 0x00, 0x00, 0x2A, 0x02, 0x0A, 0x00, 0x23,
-};
-
-static const uint8_t COMMAND_TOGGLE_VECTOR[FRAME_SIZE_COMMAND] = {
-    0xEE, 0x53, 0x12, 0x34, 0x00, 0x00, 0x00, 0x2B, 0x01, 0x03, 0x01, 0x32,
-};
-
-static const uint8_t ACK_EXECUTED_VECTOR[FRAME_SIZE_ACK] = {
-    0xEE, 0x51, 0x12, 0x34, 0x00, 0x00, 0x00, 0x2A, 0x00, 0x4C,
-};
-
-static const uint8_t ACK_REJECTED_VECTOR[FRAME_SIZE_ACK] = {
-    0xEE, 0x51, 0x12, 0x34, 0x00, 0x00, 0x00, 0x2B, 0x01, 0x5E,
-};
-
-static void seal(uint8_t *frame, size_t length) {
-    frame[length - 1] = crc8(frame, length - 1);
-}
 
 static void test_crc(void) {
     static const uint8_t check_input[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
@@ -186,7 +147,7 @@ static void test_poll(void) {
     memcpy(corrupted, POLL_VECTOR, sizeof corrupted);
     corrupted[2] = 0u;
     corrupted[3] = 0u;
-    seal(corrupted, sizeof corrupted);
+    seal_frame(corrupted, sizeof corrupted);
     CHECK(frame_decode_poll(corrupted, sizeof corrupted, &decoded) == FRAME_ERROR_DEVICE_ID);
 }
 
@@ -289,12 +250,12 @@ static void test_command(void) {
     memcpy(corrupted, COMMAND_NONE_VECTOR, sizeof corrupted);
     corrupted[2] = 0u;
     corrupted[3] = 0u;
-    seal(corrupted, sizeof corrupted);
+    seal_frame(corrupted, sizeof corrupted);
     CHECK(frame_decode_command(corrupted, sizeof corrupted, &decoded) == FRAME_ERROR_DEVICE_ID);
 
     memcpy(corrupted, COMMAND_TOGGLE_VECTOR, sizeof corrupted);
     corrupted[8] = 3u;
-    seal(corrupted, sizeof corrupted);
+    seal_frame(corrupted, sizeof corrupted);
     CHECK(frame_decode_command(corrupted, sizeof corrupted, &decoded) == FRAME_ERROR_COMMAND_TYPE);
     CHECK(decoded.command_id == 43u);
     CHECK(decoded.type == 3u);
@@ -348,7 +309,7 @@ static void test_ack(void) {
 
     memcpy(corrupted, ACK_EXECUTED_VECTOR, sizeof corrupted);
     corrupted[8] = 3u;
-    seal(corrupted, sizeof corrupted);
+    seal_frame(corrupted, sizeof corrupted);
     CHECK(frame_decode_ack(corrupted, sizeof corrupted, &decoded) == FRAME_ERROR_ACK_STATUS);
 }
 
@@ -367,11 +328,5 @@ int main(void) {
     test_ack();
     test_error_names();
 
-    if (failures != 0) {
-        fprintf(stderr, "%d check(s) failed\n", failures);
-        return 1;
-    }
-
-    printf("frame codec: all checks passed\n");
-    return 0;
+    return test_report("frame codec");
 }
