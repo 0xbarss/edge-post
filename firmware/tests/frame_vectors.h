@@ -1,7 +1,7 @@
 #ifndef EDGE_POST_TEST_FRAME_VECTORS_H
 #define EDGE_POST_TEST_FRAME_VECTORS_H
 
-#include "frame.h"
+#include "../frame.h"
 
 #include <stddef.h>
 #include <stdint.h>

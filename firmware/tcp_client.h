@@ -19,6 +19,8 @@ typedef enum {
 
 typedef struct {
     void *context;
+    /* Opens or reopens the connection and returns OK when it is ready for send and receive. */
+    tcp_client_error_t (*connect)(void *context);
     /* Sends every byte or fails; a partial send is reported as an I/O error. */
     tcp_client_error_t (*send)(void *context, const uint8_t *bytes, size_t length);
     /*
