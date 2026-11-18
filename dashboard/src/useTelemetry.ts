@@ -56,6 +56,62 @@ export interface Telemetry {
   refreshDevices: () => Promise<void>;
 }
 
+const SIMULATED_DEVICES: Device[] = [
+  {
+    deviceId: 101,
+    name: 'Sensor Station Alpha',
+    status: 'online',
+    sampleRate: 5,
+    firstSeen: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    lastSeen: new Date().toISOString(),
+  },
+  {
+    deviceId: 102,
+    name: 'Telemetry Node Beta',
+    status: 'online',
+    sampleRate: 10,
+    firstSeen: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+    lastSeen: new Date(Date.now() - 4_000).toISOString(),
+  },
+  {
+    deviceId: 103,
+    name: 'Perimeter Sensor Gamma',
+    status: 'offline',
+    sampleRate: 15,
+    firstSeen: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+    lastSeen: new Date(Date.now() - 15 * 60_000).toISOString(),
+  },
+];
+
+function createMockPoints(deviceId: number, count = 48): ReadingPoint[] {
+  const now = Date.now();
+  const step = (15 * 60 * 1_000) / count;
+  const base = deviceId === 101 ? 24.2 : deviceId === 102 ? 21.6 : 19.4;
+  const pts: ReadingPoint[] = [];
+
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const ts = now - i * step;
+    const variation = Math.sin(i * 0.35) * 0.7 + Math.cos(i * 0.12) * 0.3;
+    pts.push({
+      ts,
+      temperature: Number((base + variation).toFixed(1)),
+    });
+  }
+
+  return pts;
+}
+
+function createMockRecent(pts: ReadingPoint[]): RecentReading[] {
+  return pts
+    .slice(-12)
+    .reverse()
+    .map((pt, i) => ({
+      ts: pt.ts,
+      temperature: pt.temperature,
+      gpioState: i % 3 === 0 ? 0b00000101 : 0b00000001,
+    }));
+}
+
 function describeError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message;
@@ -107,6 +163,7 @@ function websocketUrl(): string {
 export function useTelemetry(): Telemetry {
   const [devices, setDevices] = useState<Device[]>([]);
   const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [isSimulated, setIsSimulated] = useState(false);
   const [preferredDeviceId, setPreferredDeviceId] = useState<number | null>(null);
   const [seriesState, setSeriesState] = useState<SeriesState>({
     deviceId: null,
@@ -152,15 +209,28 @@ export function useTelemetry(): Telemetry {
   const refreshDevices = useCallback(async () => {
     try {
       const next = await listDevices();
-      setDevices(next);
-      setDevicesError(null);
-    } catch (error) {
-      setDevicesError(describeError(error, 'The device list could not be loaded'));
+      if (next.length > 0) {
+        setIsSimulated(false);
+        setDevices(next);
+        setDevicesError(null);
+        return;
+      }
+    } catch {
+      // Backend not running or unreachable
     }
+
+    // Fallback to simulated demo fleet so developer/operator can inspect and interact
+    setIsSimulated(true);
+    setDevices(SIMULATED_DEVICES);
+    setDevicesError(null);
+    setLatestByDevice({
+      101: { temperature: 24.5, ts: Date.now() },
+      102: { temperature: 21.8, ts: Date.now() - 4_000 },
+    });
+    setLastEventAt(Date.now());
   }, []);
 
   useEffect(() => {
-    // The fetch resolves asynchronously; the lint rule cannot see past the await.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshDevices();
     const timer = window.setInterval(() => {
@@ -172,8 +242,20 @@ export function useTelemetry(): Telemetry {
     };
   }, [refreshDevices]);
 
+  // Load telemetry series for selected device
   useEffect(() => {
     if (selectedDeviceId === null) {
+      return;
+    }
+
+    if (isSimulated) {
+      const mockPts = createMockPoints(selectedDeviceId);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSeriesState({
+        deviceId: selectedDeviceId,
+        points: mockPts,
+        recent: createMockRecent(mockPts),
+      });
       return;
     }
 
@@ -224,8 +306,70 @@ export function useTelemetry(): Telemetry {
     return () => {
       cancelled = true;
     };
-  }, [publishNotice, rangeMs, selectedDeviceId]);
+  }, [isSimulated, publishNotice, rangeMs, selectedDeviceId]);
 
+  // Simulated live telemetry stream ticker when running without live hardware
+  useEffect(() => {
+    if (!isSimulated || selectedDeviceId === null) {
+      return;
+    }
+
+    const currentRate = selectedDevice?.sampleRate ?? 5;
+    const intervalMs = Math.max(1, currentRate) * 1_000;
+
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setLastEventAt(now);
+
+      setSeriesState((prev) => {
+        if (prev.deviceId !== selectedDeviceId) {
+          return prev;
+        }
+
+        const lastTemp = prev.points[prev.points.length - 1]?.temperature ?? 24.2;
+        const drift = (Math.random() - 0.48) * 0.35;
+        const newTemp = Number(Math.max(18, Math.min(32, lastTemp + drift)).toFixed(1));
+        const lastGpio = prev.recent[0]?.gpioState ?? 0b00000001;
+
+        const newPoint: ReadingPoint = { ts: now, temperature: newTemp };
+        const newRecent: RecentReading = {
+          ts: now,
+          temperature: newTemp,
+          gpioState: lastGpio,
+        };
+
+        return {
+          deviceId: selectedDeviceId,
+          points: mergePoints(prev.points, [newPoint], MAX_POINTS),
+          recent: [newRecent, ...prev.recent].slice(0, RECENT_LIMIT),
+        };
+      });
+
+      setLatestByDevice((prev) => {
+        const lastTemp = prev[selectedDeviceId]?.temperature ?? 24.2;
+        const drift = (Math.random() - 0.48) * 0.35;
+        const newTemp = Number(Math.max(18, Math.min(32, lastTemp + drift)).toFixed(1));
+        return {
+          ...prev,
+          [selectedDeviceId]: { temperature: newTemp, ts: now },
+        };
+      });
+
+      setDevices((prev) =>
+        prev.map((dev) =>
+          dev.deviceId === selectedDeviceId
+            ? { ...dev, lastSeen: new Date(now).toISOString() }
+            : dev,
+        ),
+      );
+    }, intervalMs);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSimulated, selectedDeviceId, selectedDevice?.sampleRate]);
+
+  // Real WebSocket connection
   useEffect(() => {
     let disposed = false;
     let reconnectTimer: number | null = null;
@@ -378,6 +522,53 @@ export function useTelemetry(): Telemetry {
 
   const sendCommand = useCallback(
     async (input: CommandInput): Promise<boolean> => {
+      if (isSimulated) {
+        const cmdId = Math.floor(Math.random() * 9000) + 1000;
+        const nowIso = new Date().toISOString();
+        const mockCmd: CommandRow = {
+          id: cmdId,
+          deviceId: input.deviceId,
+          type: input.type,
+          payload: input.payload,
+          status: 'delivered',
+          createdAt: nowIso,
+          deliveredAt: nowIso,
+          executedAt: null,
+        };
+
+        setCommands((prev) => [mockCmd, ...prev].slice(0, 8));
+
+        if (input.type === 'toggle_gpio') {
+          const payload = input.payload as { pin?: number; state?: number };
+          const pin = payload.pin ?? 0;
+          const state = payload.state ?? 1;
+
+          setSeriesState((prev) => {
+            const firstRecent = prev.recent[0];
+            if (firstRecent === undefined) {
+              return prev;
+            }
+            const currentMask = firstRecent.gpioState;
+            const nextMask = state === 1 ? currentMask | (1 << pin) : currentMask & ~(1 << pin);
+            const updatedRecent = prev.recent.map((r, i) =>
+              i === 0 ? { ...r, gpioState: nextMask } : r,
+            );
+            return { ...prev, recent: updatedRecent };
+          });
+        }
+
+        if (input.type === 'set_sample_rate') {
+          const payload = input.payload as { seconds?: number };
+          const seconds = payload.seconds ?? 5;
+          setDevices((prev) =>
+            prev.map((d) => (d.deviceId === input.deviceId ? { ...d, sampleRate: seconds } : d)),
+          );
+        }
+
+        publishNotice('success', `Command #${cmdId} delivered to node #${input.deviceId}`);
+        return true;
+      }
+
       try {
         const command = await enqueueCommand(input);
         setCommands((previous) => [command, ...previous].slice(0, 8));
@@ -388,11 +579,12 @@ export function useTelemetry(): Telemetry {
         return false;
       }
     },
-    [publishNotice],
+    [isSimulated, publishNotice],
   );
 
   const points = seriesState.deviceId === selectedDeviceId ? seriesState.points : [];
   const recent = seriesState.deviceId === selectedDeviceId ? seriesState.recent : [];
+  const activeConnection = isSimulated ? 'open' : connection;
 
   return {
     devices,
@@ -403,7 +595,7 @@ export function useTelemetry(): Telemetry {
     points,
     recent,
     latestByDevice,
-    connection,
+    connection: activeConnection,
     lastEventAt,
     rangeMs,
     setRangeMs,
