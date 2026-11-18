@@ -12,15 +12,7 @@ import {
   type SetSampleRatePayload,
   type ToggleGpioPayload,
 } from './models.js';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function hasExactKeys(record: Record<string, unknown>, keys: readonly string[]): boolean {
-  const actual = Object.keys(record);
-  return actual.length === keys.length && keys.every((key) => actual.includes(key));
-}
+import { hasExactKeys, isRecord } from './validation.js';
 
 function readInteger(
   record: Record<string, unknown>,
