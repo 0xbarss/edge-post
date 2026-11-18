@@ -10,19 +10,20 @@ interface MastheadProps {
 
 export function Masthead({ device, lastEventAt, now }: MastheadProps) {
   return (
-    <header className="masthead">
-      <div className="masthead__identity">
-        <p className="masthead__eyebrow">
+    <header className="device-header">
+      <div className="device-header__main">
+        <p className="device-header__eyebrow">
+          <span className="section-index mono">01</span>
           <span>Node</span>
-          <span className="masthead__slash" aria-hidden="true">
+          <span className="device-header__slash" aria-hidden="true">
             /
           </span>
-          <span className="mono">{device === null ? '—' : `#${device.deviceId}`}</span>
+          <span className="mono">{device === null ? '—' : device.deviceId}</span>
         </p>
 
         <h1>{device === null ? 'No node selected' : device.name}</h1>
 
-        <p className="masthead__meta">
+        <p className="device-header__desc">
           {device === null ? (
             'Choose a node from the fleet index to inspect its signal and controls.'
           ) : (
@@ -37,7 +38,7 @@ export function Masthead({ device, lastEventAt, now }: MastheadProps) {
         </p>
       </div>
 
-      <dl className="masthead__facts">
+      <dl className="device-header__facts">
         <div>
           <dt>State</dt>
           <dd>{device === null ? '—' : <StatusPill status={device.status} />}</dd>

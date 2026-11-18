@@ -1,5 +1,3 @@
-import { useId } from 'react';
-
 import type { ReadingPoint } from '../types';
 
 interface SparklineProps {
@@ -8,8 +6,6 @@ interface SparklineProps {
 }
 
 export function Sparkline({ points, className = '' }: SparklineProps) {
-  const gradientId = `spark${useId().replaceAll(':', '')}`;
-
   if (points.length < 2) {
     return <div className={`sparkline sparkline--empty ${className}`.trim()} aria-hidden="true" />;
   }
@@ -38,11 +34,6 @@ export function Sparkline({ points, className = '' }: SparklineProps) {
     )
     .join(' ');
   const last = coordinates[coordinates.length - 1];
-  const first = coordinates[0];
-  const area =
-    last === undefined || first === undefined
-      ? ''
-      : `${line} L${last.x.toFixed(1)},${height} L${first.x.toFixed(1)},${height} Z`;
 
   return (
     <svg
@@ -52,14 +43,8 @@ export function Sparkline({ points, className = '' }: SparklineProps) {
       aria-hidden="true"
       focusable="false"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${gradientId})`} />
       <path d={line} className="sparkline-line" />
+      {last !== undefined && <circle cx={last.x} cy={last.y} r={2} className="sparkline-point" />}
     </svg>
   );
 }

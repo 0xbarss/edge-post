@@ -22,27 +22,16 @@ export function FleetHealth({ devices, now }: FleetHealthProps) {
   }, null);
 
   return (
-    <section className="panel fleet-panel" id="fleet-health" aria-labelledby="fleet-title">
-      <div className="panel-heading">
-        <div>
-          <p className="panel-kicker">Presence</p>
-          <h2 id="fleet-title">Fleet</h2>
-        </div>
-      </div>
-
-      <div className="fleet-figure">
-        <strong>
-          {online.length}
-          <span>/{devices.length}</span>
-        </strong>
-        <p>
-          nodes reporting
-          <small>15 s presence window</small>
-        </p>
+    <section className="rail-block rail-health" id="fleet-health" aria-labelledby="fleet-title">
+      <div className="rail-block__head">
+        <h2 id="fleet-title">Presence</h2>
+        <span className="mono">
+          {online.length}/{devices.length}
+        </span>
       </div>
 
       <div
-        className="fleet-matrix"
+        className="presence-bar"
         role="img"
         aria-label={`${online.length} of ${devices.length} devices online`}
       >
@@ -55,13 +44,13 @@ export function FleetHealth({ devices, now }: FleetHealthProps) {
         ))}
       </div>
 
-      <dl className="fleet-rows">
+      <dl className="presence-stats">
         <div>
-          <dt>Expected ingest</dt>
+          <dt>Expected</dt>
           <dd>{expectedPerMinute.toFixed(0)}/min</dd>
         </div>
         <div>
-          <dt>Oldest contact</dt>
+          <dt>Oldest</dt>
           <dd>
             {oldestContact === null
               ? '—'
@@ -69,23 +58,22 @@ export function FleetHealth({ devices, now }: FleetHealthProps) {
           </dd>
         </div>
         <div>
-          <dt>Presence timeout</dt>
+          <dt>Timeout</dt>
           <dd>15 s</dd>
         </div>
       </dl>
 
-      <div className="offline-list">
-        <h3>Offline nodes</h3>
+      <div className="presence-offline">
+        <h3>Offline</h3>
         {offline.length === 0 ? (
-          <p className="offline-list__empty">Every registered node is reporting.</p>
+          <p className="presence-offline__empty">Every registered node is reporting.</p>
         ) : (
           <ul>
             {offline.map((device) => (
               <li key={device.deviceId}>
-                <span className="status-dot status-dot--offline" aria-hidden="true" />
-                <span>{device.name}</span>
-                <span className="mono">#{device.deviceId}</span>
-                <span className="offline-list__time">
+                <span className="device-led" data-status="offline" aria-hidden="true" />
+                <span className="presence-offline__name">{device.name}</span>
+                <span className="presence-offline__time">
                   {formatRelativeTime(Date.parse(device.lastSeen), now)}
                 </span>
               </li>

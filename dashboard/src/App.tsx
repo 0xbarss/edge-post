@@ -106,7 +106,7 @@ export default function App() {
           </span>
           <span className="brand__copy">
             <strong>Edge Post</strong>
-            <small>Operator console</small>
+            <small>Local workspace</small>
           </span>
         </div>
 
@@ -117,6 +117,8 @@ export default function App() {
           now={now}
           onSelect={selectDevice}
         />
+
+        <FleetHealth devices={devices} now={now} />
 
         <div className="rail-status" data-state={connection}>
           <span
@@ -164,6 +166,14 @@ export default function App() {
             </div>
           )}
 
+          <div className="section-rule">
+            <span className="section-index mono">02</span>
+            <h2 className="section-rule__title">Live readout</h2>
+            <span className="section-rule__meta mono">
+              {onlineCount} online · {devices.length} registered
+            </span>
+          </div>
+
           <Overview
             points={points}
             temperature={latest?.temperature ?? null}
@@ -185,8 +195,6 @@ export default function App() {
                 rangeMs={rangeMs}
                 onRangeChange={setRangeMs}
               />
-
-              <RecentReadings readings={recent} deviceName={selectedDevice?.name ?? null} />
             </div>
 
             <aside className="console-side" aria-label="Operations">
@@ -198,15 +206,15 @@ export default function App() {
                 onToggleGpio={queueToggle}
                 onSetSampleRate={queueSampleRate}
               />
-
-              <FleetHealth devices={devices} now={now} />
             </aside>
           </div>
+
+          <RecentReadings readings={recent} deviceName={selectedDevice?.name ?? null} />
 
           <footer className="page-footer">
             <span>Edge Post · operator console</span>
             <span>
-              {onlineCount} online · {devices.length} registered · local deployment
+              {onlineCount} online · {devices.length} registered · ws /ws
             </span>
           </footer>
         </main>

@@ -65,8 +65,11 @@ export function CommandConsole({
     <section className="panel control-panel" aria-labelledby="command-title">
       <div className="panel-heading">
         <div>
-          <p className="panel-kicker">Operations</p>
-          <h2 id="command-title">Control</h2>
+          <p className="panel-kicker">
+            <span className="section-index mono">04</span>
+            Operations
+          </p>
+          <h2 id="command-title">Command console</h2>
           <p className="panel-sub">
             {device === null
               ? 'Select a node to enable commands.'
@@ -168,6 +171,7 @@ export function CommandConsole({
               setSeconds(Number(event.target.value));
             }}
             disabled={disabled}
+            aria-label="Sample interval in seconds"
             aria-describedby="sample-rate-scale"
           />
           <div className="slider-scale" id="sample-rate-scale">

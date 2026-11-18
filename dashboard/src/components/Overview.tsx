@@ -39,31 +39,34 @@ export function Overview({
         : 'positive';
 
   return (
-    <section className="overview" aria-label="Live fleet metrics">
-      <div className="overview__cell overview__cell--temperature">
-        <p className="overview__label">Temperature</p>
-        <p className="overview__value">
+    <section className="readout" aria-label="Live fleet metrics">
+      <div className="readout__cell readout__cell--lead">
+        <div className="readout__head">
+          <p className="readout__label">Temperature</p>
+          <span className="readout__mark" aria-hidden="true" />
+        </div>
+        <p className="readout__value">
           {temperature === null ? '—' : temperature.toFixed(1)}
           <span>°C</span>
         </p>
-        <p className="overview__note" data-tone={deltaTone}>
+        <p className="readout__note" data-tone={deltaTone}>
           {formatTemperatureDelta(temperatureChange)}
         </p>
-        <Sparkline points={points.slice(-48)} className="overview__spark" />
+        <Sparkline points={points.slice(-48)} className="readout__spark" />
       </div>
 
-      <div className="overview__cell">
-        <p className="overview__label">Throughput</p>
-        <p className="overview__value">
+      <div className="readout__cell">
+        <p className="readout__label">Throughput</p>
+        <p className="readout__value">
           {throughput}
           <span>/min</span>
         </p>
-        <p className="overview__note" data-tone={trendTone(throughputDelta)}>
+        <p className="readout__note" data-tone={trendTone(throughputDelta)}>
           {throughputDelta === 0
             ? 'matching previous minute'
             : `${throughputDelta > 0 ? '+' : '−'}${Math.abs(throughputDelta)} vs previous minute`}
         </p>
-        <div className="overview__meter" aria-hidden="true">
+        <div className="readout__meter" aria-hidden="true">
           <span
             style={{
               width: `${expectedRate === 0 ? 0 : Math.min(100, (throughput / expectedRate) * 100)}%`,
@@ -72,28 +75,28 @@ export function Overview({
         </div>
       </div>
 
-      <div className="overview__cell">
-        <p className="overview__label">Fleet online</p>
-        <p className="overview__value">
+      <div className="readout__cell">
+        <p className="readout__label">Fleet online</p>
+        <p className="readout__value">
           {online}
           <span>/{devices.length}</span>
         </p>
-        <p className="overview__note" data-tone={offline === 0 ? 'positive' : 'negative'}>
+        <p className="readout__note" data-tone={offline === 0 ? 'positive' : 'negative'}>
           {offline === 0 ? 'no presence gaps' : `${offline} offline now`}
         </p>
-        <div className="overview__ticks" aria-hidden="true">
+        <div className="readout__ticks" aria-hidden="true">
           {devices.slice(0, 24).map((device) => (
             <span key={device.deviceId} data-status={device.status} />
           ))}
         </div>
       </div>
 
-      <div className="overview__cell">
-        <p className="overview__label">GPIO bitmask</p>
-        <p className="overview__value overview__value--mono">
+      <div className="readout__cell">
+        <p className="readout__label">GPIO bitmask</p>
+        <p className="readout__value readout__value--mono">
           {gpioMask === null ? '—' : formatGpio(gpioMask)}
         </p>
-        <p className="overview__note">
+        <p className="readout__note">
           {pins.length === 0 ? 'all pins low' : `pins ${pins.join(', ')} high`}
         </p>
         <div className="pin-leds" aria-hidden="true">

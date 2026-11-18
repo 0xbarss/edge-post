@@ -35,9 +35,9 @@ export function DeviceList({
 
   return (
     <section className="device-panel" aria-labelledby="device-panel-title">
-      <div className="device-panel__heading">
-        <h2 id="device-panel-title">Fleet index</h2>
-        <span className="count-badge">{devices.length}</span>
+      <div className="rail-block__head">
+        <h2 id="device-panel-title">Fleet</h2>
+        <span className="mono">{devices.length}</span>
       </div>
 
       <label className="search-field">
@@ -66,7 +66,7 @@ export function DeviceList({
         </p>
       ) : (
         <div className="device-list" role="group" aria-label="Select a device">
-          {filtered.map((device) => {
+          {filtered.map((device, index) => {
             const latest = latestByDevice[device.deviceId];
             const selected = device.deviceId === selectedId;
 
@@ -80,10 +80,12 @@ export function DeviceList({
                   onSelect(device.deviceId);
                 }}
               >
+                <span className="device-row__index mono">{String(index + 1).padStart(2, '0')}</span>
                 <span
-                  className={`status-dot status-dot--${device.status}`}
-                  aria-label={device.status}
+                  className="device-led"
+                  data-status={device.status}
                   role="img"
+                  aria-label={device.status}
                 />
                 <span className="device-row__body">
                   <span className="device-row__name">{device.name}</span>

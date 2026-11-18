@@ -13,7 +13,7 @@ export function TopBar({ device, connection, offlineCount, theme, onToggleTheme 
   return (
     <header className="topbar">
       <nav className="breadcrumb" aria-label="Breadcrumb">
-        <span>Fleet</span>
+        <span className="breadcrumb__root">Fleet</span>
         <span className="breadcrumb__sep" aria-hidden="true">
           /
         </span>
@@ -25,6 +25,8 @@ export function TopBar({ device, connection, offlineCount, theme, onToggleTheme 
 
       <div className="topbar__tools">
         <ConnectionPill state={connection} />
+
+        <span className="topbar__divider" aria-hidden="true" />
 
         <a
           className="icon-button notification-button"
@@ -62,13 +64,13 @@ export function TopBar({ device, connection, offlineCount, theme, onToggleTheme 
           )}
         </button>
 
-        <div className="user-chip" title="Signed-in operator">
-          <span className="user-chip__avatar" aria-hidden="true">
+        <div className="operator" title="Signed-in operator">
+          <span className="operator__mark" aria-hidden="true">
             OP
           </span>
-          <span className="user-chip__meta">
+          <span className="operator__meta">
             <strong>Operator</strong>
-            <small>Local</small>
+            <small>local session</small>
           </span>
         </div>
       </div>

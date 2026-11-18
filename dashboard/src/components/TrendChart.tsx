@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { formatClock, formatDateTime, formatTemperature } from '../format';
 import type { Device, ReadingPoint } from '../types';
@@ -11,7 +11,7 @@ const RANGE_OPTIONS = [
 
 const WIDTH = 900;
 const HEIGHT = 360;
-const PLOT = { left: 56, right: 882, top: 24, bottom: 310 } as const;
+const PLOT = { left: 64, right: 882, top: 24, bottom: 310 } as const;
 const X_TICKS = 5;
 
 interface TrendChartProps {
@@ -62,12 +62,12 @@ function rangeLabel(rangeMs: number): string {
 }
 
 export function TrendChart({ device, points, now, rangeMs, onRangeChange }: TrendChartProps) {
-  const fillId = `trace${useId().replaceAll(':', '')}`;
   const [hovered, setHovered] = useState<ReadingPoint | null>(null);
 
   const from = now - rangeMs;
   const visible = points.filter((point) => point.ts >= from && point.ts <= now + 60_000);
   const active = hovered !== null && visible.includes(hovered) ? hovered : null;
+  const latest = visible[visible.length - 1] ?? null;
 
   const domain = visible.length === 0 ? null : temperatureDomain(visible);
   const mean =
@@ -97,10 +97,6 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               `${index === 0 ? 'M' : 'L'}${xFor(point.ts).toFixed(1)},${yFor(point.temperature).toFixed(1)}`,
           )
           .join(' ');
-  const area =
-    line === ''
-      ? ''
-      : `${line} L${xFor(visible[visible.length - 1]?.ts ?? now).toFixed(1)},${PLOT.bottom} L${PLOT.left},${PLOT.bottom} Z`;
 
   const xTicks = Array.from(
     { length: X_TICKS },
@@ -148,7 +144,10 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
     <section className="panel chart-panel" aria-labelledby="chart-title">
       <div className="panel-heading chart-heading">
         <div>
-          <p className="panel-kicker">Signal / temperature</p>
+          <p className="panel-kicker">
+            <span className="section-index mono">03</span>
+            Signal
+          </p>
           <h2 id="chart-title">Temperature trace</h2>
           <div className="chart-figures">
             <span>
@@ -211,13 +210,6 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               setHovered(null);
             }}
           >
-            <defs>
-              <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.14" />
-                <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.01" />
-              </linearGradient>
-            </defs>
-
             {domain.ticks.map((tick) => {
               const y = yFor(tick);
 
@@ -261,8 +253,16 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               />
             )}
 
-            <path d={area} fill={`url(#${fillId})`} />
             <path d={line} className="chart-line" />
+
+            {latest !== null && active === null && (
+              <circle
+                cx={xFor(latest.ts)}
+                cy={yFor(latest.temperature)}
+                r={3.5}
+                className="chart-last"
+              />
+            )}
 
             {active !== null && (
               <g pointerEvents="none">
@@ -273,13 +273,13 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
                   y2={PLOT.bottom}
                   className="chart-crosshair"
                 />
-                <circle cx={tooltipX} cy={tooltipY} r={5} className="chart-point" />
+                <circle cx={tooltipX} cy={tooltipY} r={4} className="chart-point" />
                 <rect
                   x={tooltipLeft}
                   y={tooltipTop}
                   width={138}
                   height={52}
-                  rx={4}
+                  rx={2}
                   className="chart-tooltip"
                 />
                 <text x={tooltipLeft + 12} y={tooltipTop + 21} className="chart-tooltip__time">

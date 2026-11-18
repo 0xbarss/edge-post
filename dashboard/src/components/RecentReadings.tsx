@@ -25,13 +25,16 @@ export function RecentReadings({ readings, deviceName }: RecentReadingsProps) {
     <section className="panel readings-panel" aria-labelledby="readings-title">
       <div className="panel-heading">
         <div>
-          <p className="panel-kicker">Frame ledger</p>
+          <p className="panel-kicker">
+            <span className="section-index mono">05</span>
+            Frame ledger
+          </p>
           <h2 id="readings-title">Recent readings</h2>
           <p className="panel-sub">
             {deviceName === null ? 'No node selected' : `Newest frames from ${deviceName}`}
           </p>
         </div>
-        <span className="count-badge">{readings.length}</span>
+        <span className="panel-count mono">{readings.length} rows</span>
       </div>
 
       {readings.length === 0 ? (
@@ -49,7 +52,7 @@ export function RecentReadings({ readings, deviceName }: RecentReadingsProps) {
                   Temp
                 </th>
                 <th scope="col" className="numeric">
-                  Δ
+                  Delta
                 </th>
                 <th scope="col" className="numeric">
                   GPIO
@@ -58,7 +61,10 @@ export function RecentReadings({ readings, deviceName }: RecentReadingsProps) {
             </thead>
             <tbody>
               {readings.map((reading, index) => (
-                <tr key={`${reading.ts}-${index}`}>
+                <tr
+                  key={`${reading.ts}-${index}`}
+                  className={index === 0 ? 'data-row--fresh' : undefined}
+                >
                   <td className="mono">{formatClock(reading.ts)}</td>
                   <td className="numeric mono">{reading.temperature.toFixed(1)}°</td>
                   <td className="numeric mono muted">
