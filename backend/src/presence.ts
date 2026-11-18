@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 
 import { markAllDevicesOffline, markDevicesOffline, sweepPresence } from './db.js';
 import type { Logger } from './logger.js';
+import type { LiveEventSink } from './models.js';
 
 export const PRESENCE_SWEEP_INTERVAL_MS = 5_000;
 export const PRESENCE_MINIMUM_TIMEOUT_SECONDS = 15;
@@ -15,6 +16,7 @@ export class Presence {
   constructor(
     private readonly pool: Pool,
     private readonly logger: Logger,
+    private readonly live?: LiveEventSink,
   ) {}
 
   async resetOnStartup(): Promise<number> {
@@ -34,6 +36,7 @@ export class Presence {
 
     if (changed.length > 0) {
       this.logger.info({ deviceIds: changed }, 'devices marked offline');
+      this.publishOffline(changed);
     }
 
     return changed;
@@ -44,6 +47,7 @@ export class Presence {
 
     if (changed.length > 0) {
       this.logger.info({ deviceIds: changed }, 'devices marked offline by sweep');
+      this.publishOffline(changed);
     }
 
     return changed;
@@ -75,6 +79,12 @@ export class Presence {
       await this.sweepNow();
     } catch (error) {
       this.logger.error({ err: error }, 'presence sweep failed');
+    }
+  }
+
+  private publishOffline(deviceIds: number[]): void {
+    for (const deviceId of deviceIds) {
+      this.live?.publishStatus(deviceId, 'offline');
     }
   }
 }

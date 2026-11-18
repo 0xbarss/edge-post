@@ -1,6 +1,9 @@
 export type DeviceStatus = 'online' | 'offline';
 export type CommandStatus = 'pending' | 'delivered' | 'executed' | 'failed';
 
+export const MIN_DEVICE_ID = 1;
+export const MAX_DEVICE_ID = 65535;
+
 export const COMMAND_TYPES = ['toggle_gpio', 'set_sample_rate'] as const;
 export type CommandType = (typeof COMMAND_TYPES)[number];
 
@@ -42,6 +45,11 @@ export interface ReadingInput {
   temperatureTenths: number;
   gpioState: number;
   sampleRate: number;
+}
+
+export interface LiveEventSink {
+  publishReading(reading: Reading): void;
+  publishStatus(deviceId: number, status: DeviceStatus): void;
 }
 
 export interface CommandRow {
