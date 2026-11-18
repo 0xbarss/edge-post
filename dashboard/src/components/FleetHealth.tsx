@@ -24,8 +24,8 @@ export function FleetHealth({ devices, now }: FleetHealthProps) {
   return (
     <section className="rail-block rail-health" id="fleet-health" aria-labelledby="fleet-title">
       <div className="rail-block__head">
-        <h2 id="fleet-title">Presence</h2>
-        <span className="mono">
+        <h2 id="fleet-title">Fleet Presence</h2>
+        <span className="presence-fraction mono">
           {online.length}/{devices.length}
         </span>
       </div>
@@ -38,49 +38,52 @@ export function FleetHealth({ devices, now }: FleetHealthProps) {
         {devices.slice(0, 24).map((device) => (
           <span
             key={device.deviceId}
+            className="presence-bar__segment"
             data-status={device.status}
-            title={`${device.name} · ${device.status}`}
+            title={`${device.name} • ${device.status}`}
           />
         ))}
       </div>
 
-      <dl className="presence-stats">
-        <div>
-          <dt>Expected</dt>
-          <dd>{expectedPerMinute.toFixed(0)}/min</dd>
+      <div className="presence-stats-grid">
+        <div className="presence-stat-box">
+          <span className="presence-stat-box__label">Expected Ingest</span>
+          <span className="presence-stat-box__value mono">{expectedPerMinute.toFixed(0)}/min</span>
         </div>
-        <div>
-          <dt>Oldest</dt>
-          <dd>
-            {oldestContact === null
-              ? '—'
-              : formatRelativeTime(Date.parse(oldestContact.lastSeen), now)}
-          </dd>
+        <div className="presence-stat-box">
+          <span className="presence-stat-box__label">Heartbeat Timeout</span>
+          <span className="presence-stat-box__value mono">15s</span>
         </div>
-        <div>
-          <dt>Timeout</dt>
-          <dd>15 s</dd>
-        </div>
-      </dl>
+      </div>
 
-      <div className="presence-offline">
-        <h3>Offline</h3>
-        {offline.length === 0 ? (
-          <p className="presence-offline__empty">Every registered node is reporting.</p>
-        ) : (
-          <ul>
+      {oldestContact && (
+        <div className="presence-oldest">
+          <span className="presence-oldest__label">Oldest Signal</span>
+          <span className="presence-oldest__val mono">
+            {formatRelativeTime(Date.parse(oldestContact.lastSeen), now)}
+          </span>
+        </div>
+      )}
+
+      {offline.length > 0 && (
+        <div className="presence-offline">
+          <div className="presence-offline__head">
+            <h3>Offline Nodes</h3>
+            <span className="presence-offline__count">{offline.length}</span>
+          </div>
+          <ul className="presence-offline__list">
             {offline.map((device) => (
-              <li key={device.deviceId}>
+              <li key={device.deviceId} className="presence-offline__item">
                 <span className="device-led" data-status="offline" aria-hidden="true" />
                 <span className="presence-offline__name">{device.name}</span>
-                <span className="presence-offline__time">
+                <span className="presence-offline__time mono">
                   {formatRelativeTime(Date.parse(device.lastSeen), now)}
                 </span>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

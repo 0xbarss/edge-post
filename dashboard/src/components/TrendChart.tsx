@@ -98,6 +98,13 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
           )
           .join(' ');
 
+  const firstPoint = visible[0];
+  const lastPoint = visible[visible.length - 1];
+  const area =
+    visible.length > 0 && firstPoint && lastPoint
+      ? `${line} L ${xFor(lastPoint.ts).toFixed(1)},${PLOT.bottom} L ${xFor(firstPoint.ts).toFixed(1)},${PLOT.bottom} Z`
+      : '';
+
   const xTicks = Array.from(
     { length: X_TICKS },
     (_, index) => from + (rangeMs * index) / (X_TICKS - 1),
@@ -137,34 +144,33 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
 
   const tooltipX = active === null ? 0 : xFor(active.ts);
   const tooltipY = active === null ? 0 : yFor(active.temperature);
-  const tooltipLeft = Math.min(Math.max(tooltipX - 64, PLOT.left), PLOT.right - 138);
-  const tooltipTop = Math.max(tooltipY - 74, PLOT.top);
+  const tooltipLeft = Math.min(Math.max(tooltipX - 70, PLOT.left), PLOT.right - 142);
+  const tooltipTop = Math.max(tooltipY - 76, PLOT.top);
 
   return (
     <section className="panel chart-panel" aria-labelledby="chart-title">
       <div className="panel-heading chart-heading">
-        <div>
-          <p className="panel-kicker">
-            <span className="section-index mono">03</span>
-            Signal
-          </p>
-          <h2 id="chart-title">Temperature trace</h2>
+        <div className="chart-heading__info">
+          <span className="panel-eyebrow">Realtime Telemetry</span>
+          <h2 id="chart-title" className="panel-title">
+            Temperature Trace
+          </h2>
           <div className="chart-figures">
-            <span>
-              <small>min</small>
-              {formatTemperature(minimum)}
+            <span className="stat-pill">
+              <span className="stat-pill__label">Min</span>
+              <span className="stat-pill__val">{formatTemperature(minimum)}</span>
             </span>
-            <span>
-              <small>mean</small>
-              {formatTemperature(mean)}
+            <span className="stat-pill">
+              <span className="stat-pill__label">Mean</span>
+              <span className="stat-pill__val">{formatTemperature(mean)}</span>
             </span>
-            <span>
-              <small>max</small>
-              {formatTemperature(maximum)}
+            <span className="stat-pill">
+              <span className="stat-pill__label">Max</span>
+              <span className="stat-pill__val">{formatTemperature(maximum)}</span>
             </span>
-            <span>
-              <small>window</small>
-              {rangeLabel(rangeMs)}
+            <span className="stat-pill">
+              <span className="stat-pill__label">Window</span>
+              <span className="stat-pill__val">{rangeLabel(rangeMs)}</span>
             </span>
           </div>
         </div>
@@ -188,9 +194,14 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
 
       {visible.length === 0 || domain === null ? (
         <div className="chart-empty">
-          <span className="chart-empty__mark" aria-hidden="true">
-            —
-          </span>
+          <svg className="chart-empty__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M3 3v18h18M7 16l4-5 4 3 6-8"
+            />
+          </svg>
           <p className="chart-empty__title">No frames in this window</p>
           <p className="chart-empty__body">
             {device === null
@@ -210,19 +221,29 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               setHovered(null);
             }}
           >
+            <defs>
+              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.22" />
+                <stop offset="85%" stopColor="var(--accent)" stopOpacity="0.02" />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {/* Grid ticks */}
             {domain.ticks.map((tick) => {
               const y = yFor(tick);
 
               return (
                 <g key={tick}>
                   <line x1={PLOT.left} x2={PLOT.right} y1={y} y2={y} className="chart-grid" />
-                  <text x={PLOT.left - 14} y={y + 4} textAnchor="end" className="chart-axis">
+                  <text x={PLOT.left - 12} y={y + 4} textAnchor="end" className="chart-axis">
                     {tick.toFixed(1)}°
                   </text>
                 </g>
               );
             })}
 
+            {/* X axis timestamps */}
             {xTicks.map((tick, index) => (
               <text
                 key={tick}
@@ -243,6 +264,7 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               className="chart-axis-line"
             />
 
+            {/* Mean dashed baseline */}
             {mean !== null && (
               <line
                 x1={PLOT.left}
@@ -253,19 +275,25 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
               />
             )}
 
+            {/* Area fill */}
+            {area !== '' && <path d={area} fill="url(#trendGradient)" />}
+
+            {/* Main line */}
             <path d={line} className="chart-line" />
 
+            {/* Latest point indicator */}
             {latest !== null && active === null && (
               <circle
                 cx={xFor(latest.ts)}
                 cy={yFor(latest.temperature)}
-                r={3.5}
+                r={4}
                 className="chart-last"
               />
             )}
 
+            {/* Active hover crosshair and card tooltip */}
             {active !== null && (
-              <g pointerEvents="none">
+              <g pointerEvents="none" className="chart-hover-group">
                 <line
                   x1={tooltipX}
                   x2={tooltipX}
@@ -273,35 +301,32 @@ export function TrendChart({ device, points, now, rangeMs, onRangeChange }: Tren
                   y2={PLOT.bottom}
                   className="chart-crosshair"
                 />
-                <circle cx={tooltipX} cy={tooltipY} r={4} className="chart-point" />
-                <rect
-                  x={tooltipLeft}
-                  y={tooltipTop}
-                  width={138}
-                  height={52}
-                  rx={2}
-                  className="chart-tooltip"
-                />
-                <text x={tooltipLeft + 12} y={tooltipTop + 21} className="chart-tooltip__time">
-                  {formatDateTime(active.ts)}
-                </text>
-                <text x={tooltipLeft + 12} y={tooltipTop + 41} className="chart-tooltip__value">
-                  {formatTemperature(active.temperature)}
-                </text>
+                <circle cx={tooltipX} cy={tooltipY} r={6} className="chart-point-glow" />
+                <circle cx={tooltipX} cy={tooltipY} r={3.5} className="chart-point" />
+
+                <g transform={`translate(${tooltipLeft}, ${tooltipTop})`}>
+                  <rect width={140} height={54} rx={6} className="chart-tooltip-box" />
+                  <text x={12} y={22} className="chart-tooltip__time">
+                    {formatDateTime(active.ts)}
+                  </text>
+                  <text x={12} y={43} className="chart-tooltip__value">
+                    {formatTemperature(active.temperature)}C
+                  </text>
+                </g>
               </g>
             )}
           </svg>
 
           <div className="chart-legend">
-            <span>
+            <span className="legend-item">
               <i className="legend-swatch legend-swatch--line" aria-hidden="true" />
-              Reading
+              Live Sensor Signal
             </span>
-            <span>
+            <span className="legend-item">
               <i className="legend-swatch legend-swatch--mean" aria-hidden="true" />
-              Window mean {mean === null ? '' : `(${mean.toFixed(1)}°)`}
+              Window Mean {mean === null ? '' : `(${mean.toFixed(1)}°)`}
             </span>
-            <span className="chart-legend__hint">{visible.length} samples · local time</span>
+            <span className="chart-legend__hint">{visible.length} data samples • synchronized</span>
           </div>
         </>
       )}

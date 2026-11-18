@@ -18,11 +18,11 @@ const SAMPLE_RATE_MAX = 60;
 function commandSummary(command: CommandRow): string {
   if (command.type === 'toggle_gpio') {
     const payload = command.payload as { pin?: number; state?: number } | null;
-    return `GPIO ${payload?.pin ?? '?'} → ${payload?.state === 1 ? 'high' : 'low'}`;
+    return `GPIO Pin ${payload?.pin ?? '?'} → ${payload?.state === 1 ? 'HIGH' : 'LOW'}`;
   }
 
   const payload = command.payload as { seconds?: number } | null;
-  return `Interval → ${payload?.seconds ?? '?'} s`;
+  return `Poll Interval → ${payload?.seconds ?? '?'}s`;
 }
 
 export function CommandConsole({
@@ -65,19 +65,19 @@ export function CommandConsole({
     <section className="panel control-panel" aria-labelledby="command-title">
       <div className="panel-heading">
         <div>
-          <p className="panel-kicker">
-            <span className="section-index mono">04</span>
-            Operations
-          </p>
-          <h2 id="command-title">Command console</h2>
+          <span className="panel-eyebrow">Hardware Dispatch</span>
+          <h2 id="command-title" className="panel-title">
+            Command Operations
+          </h2>
           <p className="panel-sub">
             {device === null
-              ? 'Select a node to enable commands.'
-              : `Queued for ${device.name}; delivered on its next poll.`}
+              ? 'Select a node from the fleet index to enable hardware control.'
+              : `Dispatches to ${device.name}; executed on its next polling window.`}
           </p>
         </div>
       </div>
 
+      {/* GPIO Control Form */}
       <form
         className="control-section"
         onSubmit={(event) => {
@@ -86,18 +86,18 @@ export function CommandConsole({
         }}
       >
         <div className="control-section__title">
-          <h3>GPIO output</h3>
-          <span className="mono">pin {pin}</span>
+          <h3>GPIO Output</h3>
+          <span className="control-section__badge mono">Pin {pin}</span>
         </div>
 
-        <div className="pin-grid" role="group" aria-label="GPIO pin">
+        <div className="pin-grid" role="group" aria-label="Select GPIO pin">
           {PINS.map((value) => (
             <button
               key={value}
               type="button"
-              className="pin-button"
+              className={`pin-button ${pin === value ? 'pin-button--active' : ''}`}
               aria-pressed={pin === value}
-              aria-label={`Pin ${value}`}
+              aria-label={`Select Pin ${value}`}
               onClick={() => {
                 setPin(value);
               }}
@@ -108,43 +108,47 @@ export function CommandConsole({
           ))}
         </div>
 
-        <fieldset className="level-field" disabled={disabled}>
-          <legend>Level</legend>
-          <div className="level-toggle">
-            <label>
-              <input
-                type="radio"
-                name="gpio-state"
-                value="1"
-                checked={state === 1}
-                onChange={() => {
-                  setState(1);
-                }}
-              />
-              <span>High</span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="gpio-state"
-                value="0"
-                checked={state === 0}
-                onChange={() => {
-                  setState(0);
-                }}
-              />
-              <span>Low</span>
-            </label>
+        <div className="level-segmented-wrap">
+          <span className="control-label">Signal Level</span>
+          <div className="level-toggle" role="radiogroup" aria-label="GPIO Signal Level">
+            <button
+              type="button"
+              className={`level-toggle__btn ${state === 1 ? 'level-toggle__btn--active' : ''}`}
+              onClick={() => setState(1)}
+              disabled={disabled}
+              role="radio"
+              aria-checked={state === 1}
+            >
+              High (1)
+            </button>
+            <button
+              type="button"
+              className={`level-toggle__btn ${state === 0 ? 'level-toggle__btn--active' : ''}`}
+              onClick={() => setState(0)}
+              disabled={disabled}
+              role="radio"
+              aria-checked={state === 0}
+            >
+              Low (0)
+            </button>
           </div>
-        </fieldset>
+        </div>
 
         <button type="submit" className="button button--primary button--block" disabled={disabled}>
-          {busy === 'gpio' ? 'Queuing…' : `Queue pin ${pin} ${state === 1 ? 'high' : 'low'}`}
+          {busy === 'gpio' ? (
+            'Queueing Dispatch…'
+          ) : (
+            <>
+              <span>Queue Pin {pin}</span>
+              <span className="button__meta">({state === 1 ? 'HIGH' : 'LOW'})</span>
+            </>
+          )}
         </button>
       </form>
 
       <div className="panel-rule" />
 
+      {/* Sample Rate Form */}
       <form
         className="control-section"
         onSubmit={(event) => {
@@ -153,10 +157,8 @@ export function CommandConsole({
         }}
       >
         <div className="control-section__title">
-          <h3>Sample interval</h3>
-          <output className="control-output" htmlFor="sample-rate">
-            {seconds} s
-          </output>
+          <h3>Sample Interval</h3>
+          <span className="control-output mono">{seconds}s</span>
         </div>
 
         <div className="slider-field">
@@ -175,8 +177,8 @@ export function CommandConsole({
             aria-describedby="sample-rate-scale"
           />
           <div className="slider-scale" id="sample-rate-scale">
-            <span>1 s · faster</span>
-            <span>60 s · quieter</span>
+            <span>1s · High Frequency</span>
+            <span>60s · Eco Mode</span>
           </div>
         </div>
 
@@ -185,28 +187,32 @@ export function CommandConsole({
           className="button button--secondary button--block"
           disabled={disabled}
         >
-          {busy === 'rate' ? 'Queuing…' : `Queue ${seconds} s interval`}
+          {busy === 'rate' ? 'Queueing Update…' : `Set ${seconds}s Interval`}
         </button>
       </form>
 
       <div className="panel-rule" />
 
+      {/* Command Ledger */}
       <div className="ledger">
         <div className="control-section__title">
-          <h3>Command ledger</h3>
-          <span className="mono">{commands.length}</span>
+          <h3>Command Ledger</h3>
+          <span className="panel-count mono">{commands.length}</span>
         </div>
+
         {commands.length === 0 ? (
-          <p className="ledger__empty">No commands queued from this console.</p>
+          <p className="ledger__empty">No queued commands for this session.</p>
         ) : (
-          <ul>
+          <ul className="ledger__list">
             {commands.map((command) => (
-              <li key={command.id}>
+              <li key={command.id} className="ledger__item">
                 <span className="ledger__id mono">#{command.id}</span>
-                <span className="ledger__body">
-                  {commandSummary(command)}
-                  <small>{formatRelativeTime(Date.parse(command.createdAt), now)}</small>
-                </span>
+                <div className="ledger__body">
+                  <span className="ledger__summary">{commandSummary(command)}</span>
+                  <span className="ledger__time">
+                    {formatRelativeTime(Date.parse(command.createdAt), now)}
+                  </span>
+                </div>
                 <span className="command-status" data-status={command.status}>
                   {command.status}
                 </span>

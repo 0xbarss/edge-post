@@ -36,8 +36,8 @@ export function DeviceList({
   return (
     <section className="device-panel" aria-labelledby="device-panel-title">
       <div className="rail-block__head">
-        <h2 id="device-panel-title">Fleet</h2>
-        <span className="mono">{devices.length}</span>
+        <h2 id="device-panel-title">Fleet Nodes</h2>
+        <span className="rail-block__count mono">{devices.length}</span>
       </div>
 
       <label className="search-field">
@@ -52,21 +52,24 @@ export function DeviceList({
           onChange={(event) => {
             setQuery(event.target.value);
           }}
-          placeholder="Find a node"
+          placeholder="Filter nodes..."
           autoComplete="off"
           spellCheck={false}
         />
+        <kbd className="search-shortcut" aria-hidden="true">
+          /
+        </kbd>
       </label>
 
       {filtered.length === 0 ? (
         <p className="device-panel__empty">
           {devices.length === 0
-            ? 'No devices have reported yet. Send a frame to the TCP ingest port.'
-            : 'No device matches that filter.'}
+            ? 'No devices reporting. Transmit a sensor packet to the ingest port.'
+            : 'No nodes match the search criteria.'}
         </p>
       ) : (
         <div className="device-list" role="group" aria-label="Select a device">
-          {filtered.map((device, index) => {
+          {filtered.map((device) => {
             const latest = latestByDevice[device.deviceId];
             const selected = device.deviceId === selectedId;
 
@@ -80,7 +83,6 @@ export function DeviceList({
                   onSelect(device.deviceId);
                 }}
               >
-                <span className="device-row__index mono">{String(index + 1).padStart(2, '0')}</span>
                 <span
                   className="device-led"
                   data-status={device.status}
@@ -91,7 +93,9 @@ export function DeviceList({
                   <span className="device-row__name">{device.name}</span>
                   <span className="device-row__meta">
                     <span className="mono">#{device.deviceId}</span>
-                    <span aria-hidden="true">·</span>
+                    <span className="sep-dot" aria-hidden="true">
+                      •
+                    </span>
                     <span>{formatRelativeTime(Date.parse(device.lastSeen), now)}</span>
                   </span>
                 </span>
@@ -99,7 +103,7 @@ export function DeviceList({
                   <span className="device-row__temp">
                     {formatTemperature(latest?.temperature ?? null)}
                   </span>
-                  <span className="device-row__rate">{device.sampleRate}s</span>
+                  <span className="device-row__rate mono">{device.sampleRate}s</span>
                 </span>
               </button>
             );

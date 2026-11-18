@@ -86,10 +86,10 @@ export default function App() {
 
   const feedLabel =
     connection === 'open'
-      ? 'Live feed connected'
+      ? 'Live Feed Connected'
       : connection === 'connecting'
-        ? 'Connecting to feed'
-        : 'Feed reconnecting';
+        ? 'Connecting to Feed'
+        : 'Feed Reconnecting';
 
   return (
     <div className="app-shell">
@@ -99,15 +99,27 @@ export default function App() {
 
       <aside className="rail">
         <div className="brand">
-          <span className="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" focusable="false">
-              <path d="M3 19.5h6.5l3-9 5 16 3.5-7H29" />
+          <div className="brand__logo" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 9a8 8 0 0 1 16 0" />
+              <path d="M7 9a5 5 0 0 1 10 0" />
+              <circle cx="12" cy="9" r="1.8" fill="currentColor" stroke="none" />
+              <path d="M12 11v10" />
+              <path d="M9.5 16h5" />
+              <path d="M8 21h8" />
             </svg>
-          </span>
-          <span className="brand__copy">
-            <strong>Edge Post</strong>
-            <small>Local workspace</small>
-          </span>
+          </div>
+          <div className="brand__info">
+            <strong className="brand__title">Edge Post</strong>
+            <span className="brand__badge">Operator Console</span>
+          </div>
         </div>
 
         <DeviceList
@@ -125,11 +137,10 @@ export default function App() {
             className={`status-dot ${connection === 'open' ? 'status-dot--online' : 'status-dot--offline'}`}
             aria-hidden="true"
           />
-          <span>
-            <strong>{feedLabel}</strong>
-            <small>{devices.length} nodes · ws /ws</small>
-          </span>
-          <span className="rail-status__version">v0.1</span>
+          <div className="rail-status__meta">
+            <strong className="rail-status__title">{feedLabel}</strong>
+            <span className="rail-status__sub mono">{devices.length} nodes • /ws</span>
+          </div>
         </div>
       </aside>
 
@@ -166,12 +177,20 @@ export default function App() {
             </div>
           )}
 
-          <div className="section-rule">
-            <span className="section-index mono">02</span>
-            <h2 className="section-rule__title">Live readout</h2>
-            <span className="section-rule__meta mono">
-              {onlineCount} online · {devices.length} registered
-            </span>
+          <div className="section-header">
+            <div>
+              <h2 className="section-header__title">Telemetry Overview</h2>
+              <p className="section-header__subtitle">
+                Continuous telemetry readings and fleet-wide sensor health
+              </p>
+            </div>
+            <div className="section-header__meta">
+              <span className="meta-pill mono">
+                <span className="status-dot status-dot--online" aria-hidden="true" />
+                {onlineCount} Online
+              </span>
+              <span className="meta-pill mono">{devices.length} Total Nodes</span>
+            </div>
           </div>
 
           <Overview
@@ -197,7 +216,7 @@ export default function App() {
               />
             </div>
 
-            <aside className="console-side" aria-label="Operations">
+            <aside className="console-side" aria-label="Hardware Operations">
               <CommandConsole
                 key={selectedDeviceId ?? 'no-device'}
                 device={selectedDevice}
@@ -212,10 +231,22 @@ export default function App() {
           <RecentReadings readings={recent} deviceName={selectedDevice?.name ?? null} />
 
           <footer className="page-footer">
-            <span>Edge Post · operator console</span>
-            <span>
-              {onlineCount} online · {devices.length} registered · ws /ws
-            </span>
+            <div className="page-footer__brand">
+              <span>Edge Post Platform</span>
+              <span className="sep-dot" aria-hidden="true">
+                •
+              </span>
+              <span>Realtime Embedded Operations Console</span>
+            </div>
+            <div className="page-footer__meta mono">
+              <span>
+                Fleet: {onlineCount}/{devices.length} Active
+              </span>
+              <span className="sep-dot" aria-hidden="true">
+                •
+              </span>
+              <span>WebSocket Telemetry Ingest</span>
+            </div>
           </footer>
         </main>
       </div>
