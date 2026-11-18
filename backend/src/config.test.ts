@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { loadConfig } from './config.js';
+import { DEFAULT_DASHBOARD_DIRECTORY } from './dashboard.js';
 
 const baseEnv = {
   DATABASE_URL: 'postgres://edge:edge@localhost:5432/edge_post',
@@ -14,6 +15,7 @@ describe('configuration', () => {
       tcpPort: 9000,
       httpHost: '0.0.0.0',
       httpPort: 3000,
+      dashboardDir: DEFAULT_DASHBOARD_DIRECTORY,
       logLevel: 'info',
     });
   });
@@ -25,6 +27,7 @@ describe('configuration', () => {
       TCP_PORT: '9100',
       HTTP_HOST: '127.0.0.1',
       HTTP_PORT: '3100',
+      DASHBOARD_DIR: '/srv/dashboard',
       LOG_LEVEL: 'debug',
     });
 
@@ -33,6 +36,7 @@ describe('configuration', () => {
       tcpPort: 9100,
       httpHost: '127.0.0.1',
       httpPort: 3100,
+      dashboardDir: '/srv/dashboard',
       logLevel: 'debug',
     });
   });

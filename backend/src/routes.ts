@@ -12,6 +12,7 @@ import {
   listReadings,
   registerDevice,
 } from './db.js';
+import { DEFAULT_DASHBOARD_DIRECTORY, registerDashboard } from './dashboard.js';
 import { AppError, ConflictError, NotFoundError, ValidationError } from './errors.js';
 import type { Logger } from './logger.js';
 import { MAX_DEVICE_ID, MIN_DEVICE_ID } from './models.js';
@@ -28,6 +29,7 @@ const ISO_TIMESTAMP_PATTERN =
 export interface AppOptions {
   pool: Pool;
   logger: Logger;
+  dashboardDir?: string;
 }
 
 function readBody(body: unknown): Record<string, unknown> {
@@ -244,6 +246,8 @@ export function buildApp(options: AppOptions): FastifyInstance {
     const command = await createCommand(options.pool, readBody(request.body));
     return reply.code(201).send({ data: command });
   });
+
+  registerDashboard(app, options.dashboardDir ?? DEFAULT_DASHBOARD_DIRECTORY, options.logger);
 
   return app;
 }
