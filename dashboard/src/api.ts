@@ -1,4 +1,4 @@
-import type { CommandRow, CommandType, Device, Reading, ServerEvent } from './types';
+import type { BoardProfile, CommandRow, CommandType, Device, Reading, ServerEvent } from './types';
 
 const API_BASE = '/api/v1';
 
@@ -22,6 +22,18 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+export function describeError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message !== '') {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -86,6 +98,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function listDevices(): Promise<Device[]> {
   return request<Device[]>('/devices');
+}
+
+export function listBoards(): Promise<BoardProfile[]> {
+  return request<BoardProfile[]>('/boards');
 }
 
 export function listReadings(deviceId: number, from: number, to: number): Promise<Reading[]> {

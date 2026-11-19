@@ -1,3 +1,4 @@
+import { BoardCatalog } from './components/BoardCatalog';
 import { CommandConsole } from './components/CommandConsole';
 import { DeviceList } from './components/DeviceList';
 import { FleetHealth } from './components/FleetHealth';
@@ -8,6 +9,7 @@ import { Toast } from './components/Toast';
 import { TopBar } from './components/TopBar';
 import { TrendChart } from './components/TrendChart';
 import { latestPoint, ratePerMinute, temperatureDelta } from './telemetry';
+import { useBoards } from './useBoards';
 import { useNow } from './useNow';
 import { useTelemetry } from './useTelemetry';
 import { useTheme } from './useTheme';
@@ -28,6 +30,7 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const now = useNow();
   const telemetry = useTelemetry();
+  const boards = useBoards();
 
   const {
     devices,
@@ -229,6 +232,8 @@ export default function App() {
           </div>
 
           <RecentReadings readings={recent} deviceName={selectedDevice?.name ?? null} />
+
+          <BoardCatalog boards={boards.boards} error={boards.error} onRefresh={boards.refresh} />
 
           <footer className="page-footer">
             <div className="page-footer__brand">

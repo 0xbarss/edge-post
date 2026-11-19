@@ -42,6 +42,78 @@ export interface Notice {
   message: string;
 }
 
+export interface BoardMcu {
+  name: string;
+  cpn: string | null;
+  family: string | null;
+  package: string | null;
+}
+
+export interface BoardClock {
+  sysclkHz: number | null;
+  hclkHz: number | null;
+  rtcSource: string | null;
+}
+
+export interface BoardPin {
+  pin: string;
+  signal: string;
+  label: string | null;
+  initialState: 'set' | 'reset' | null;
+}
+
+export interface BoardAdcChannel {
+  instance: string;
+  channel: number;
+  pin: string;
+  label: string | null;
+}
+
+export interface BoardUart {
+  instance: string;
+  txPin: string | null;
+  rxPin: string | null;
+}
+
+export interface BoardSpi {
+  instance: string;
+  sckPin: string | null;
+  misoPin: string | null;
+  mosiPin: string | null;
+  nssPin: string | null;
+}
+
+export interface BoardI2c {
+  instance: string;
+  sclPin: string | null;
+  sdaPin: string | null;
+}
+
+export interface BoardGpio {
+  pin: string;
+  label: string | null;
+}
+
+export interface BoardGroups {
+  adc: BoardAdcChannel[];
+  uart: BoardUart[];
+  spi: BoardSpi[];
+  i2c: BoardI2c[];
+  outputs: BoardGpio[];
+  inputs: BoardGpio[];
+}
+
+export interface BoardProfile {
+  name: string;
+  source: string;
+  mcu: BoardMcu;
+  firmwarePackage: string | null;
+  clock: BoardClock;
+  peripherals: string[];
+  pins: BoardPin[];
+  groups: BoardGroups;
+}
+
 export interface DeviceView extends Device {
   latestTemperature: number | null;
   latestTs: number | null;
