@@ -2435,6 +2435,10 @@ td[data-tone='neutral'] {
   .board-card__specs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .board-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 36rem) {
