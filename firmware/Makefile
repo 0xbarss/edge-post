@@ -12,7 +12,9 @@ TEST_HEADERS := $(wildcard tests/*.h)
 FORMAT_SOURCES := $(PRODUCT_SOURCES) $(FIRMWARE_HEADERS) $(TEST_SOURCES) $(TEST_HEADERS)
 TEST_BINARIES := $(BUILD_DIR)/frame_test $(BUILD_DIR)/command_test $(BUILD_DIR)/app_test
 
-.PHONY: all test format format-check lint clean
+BOARD_TOOL := npm --prefix ../backend run board:generate
+
+.PHONY: all test format format-check lint board board-check clean
 
 all: test
 
@@ -41,6 +43,12 @@ format-check:
 
 lint:
 	clang-tidy $(PRODUCT_SOURCES) $(TEST_SOURCES) -- $(CPPFLAGS) $(CFLAGS)
+
+board:
+	$(BOARD_TOOL)
+
+board-check:
+	$(BOARD_TOOL) -- --check
 
 clean:
 	rm -rf $(BUILD_DIR)
