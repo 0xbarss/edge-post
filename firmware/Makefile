@@ -4,6 +4,12 @@ CFLAGS += -std=c11 -Wall -Wextra -Wpedantic -Werror -Wshadow
 SANITIZER_FLAGS ?= -fsanitize=address,undefined -fno-omit-frame-pointer
 CPPFLAGS ?= -I.
 
+BOARD ?=
+ifneq ($(strip $(BOARD)),)
+BOARD_DIR := boards/$(BOARD)
+CPPFLAGS += -I$(BOARD_DIR)
+endif
+
 BUILD_DIR := build
 PRODUCT_SOURCES := frame.c command.c app.c
 FIRMWARE_HEADERS := $(wildcard *.h)
@@ -14,7 +20,7 @@ TEST_BINARIES := $(BUILD_DIR)/frame_test $(BUILD_DIR)/command_test $(BUILD_DIR)/
 
 BOARD_TOOL := npm --prefix ../backend run board:generate
 
-.PHONY: all test format format-check lint board board-check clean
+.PHONY: all test format format-check lint board board-check board-select clean
 
 all: test
 
@@ -49,6 +55,10 @@ board:
 
 board-check:
 	$(BOARD_TOOL) -- --check
+
+board-select:
+	@test -n "$(strip $(BOARD))" || { echo "BOARD is required, for example: make BOARD=my-board" >&2; exit 2; }
+	@test -f "$(BOARD_DIR)/board_config.h" || { echo "Missing $(BOARD_DIR)/board_config.h; run make board" >&2; exit 2; }
 
 clean:
 	rm -rf $(BUILD_DIR)

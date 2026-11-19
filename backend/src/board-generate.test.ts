@@ -121,7 +121,42 @@ describe('generateBoards', () => {
 
     const result = await generateBoards({ rootDir: root, boardsDir, check: false });
 
-    expect(result).toEqual({ boards: [], written: [], outdated: [] });
+    expect(result).toEqual({ boards: [], written: [], removed: [], outdated: [] });
     expect(await exists(path.join(boardsDir, 'boards.json'))).toBe(false);
+  });
+
+  it('removes a stale manifest when the last board is deleted', async () => {
+    const root = await createRoot();
+    await addBoard(root, 'alpha', 'alpha.ioc', 'alpha');
+    const boardsDir = path.join(root, 'boards');
+    const manifestPath = path.join(boardsDir, 'boards.json');
+    await generateBoards({ rootDir: root, boardsDir, check: false });
+
+    const boardDirectory = path.join(boardsDir, 'alpha');
+    await rm(boardDirectory, { recursive: true, force: true });
+
+    const result = await generateBoards({ rootDir: root, boardsDir, check: false });
+
+    expect(result.removed).toEqual([manifestPath]);
+    expect(await exists(manifestPath)).toBe(false);
+    expect(await generateBoards({ rootDir: root, boardsDir, check: true })).toEqual({
+      boards: [],
+      written: [],
+      removed: [],
+      outdated: [],
+    });
+  });
+
+  it('reports a stale manifest in check mode after the last board is deleted', async () => {
+    const root = await createRoot();
+    await addBoard(root, 'alpha', 'alpha.ioc', 'alpha');
+    const boardsDir = path.join(root, 'boards');
+    const manifestPath = path.join(boardsDir, 'boards.json');
+    await generateBoards({ rootDir: root, boardsDir, check: false });
+    await rm(path.join(boardsDir, 'alpha'), { recursive: true, force: true });
+
+    const check = await generateBoards({ rootDir: root, boardsDir, check: true });
+
+    expect(check.outdated).toEqual([manifestPath]);
   });
 });

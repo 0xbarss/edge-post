@@ -20,6 +20,11 @@ function writeError(message: string): void {
   process.stderr.write(`${message}\n`);
 }
 
+function displayPath(filePath: string): string {
+  const relative = path.relative(REPOSITORY_ROOT, filePath);
+  return relative === '' || relative.startsWith('..') ? filePath : relative;
+}
+
 function parseArguments(args: string[]): CliOptions {
   const options: CliOptions = {
     boardsDir: path.join(REPOSITORY_ROOT, 'firmware', 'boards'),
@@ -88,21 +93,21 @@ async function main(): Promise<void> {
       check: options.check,
     });
 
-    if (result.boards.length === 0) {
-      write(`No .ioc files found under ${options.boardsDir}`);
-      return;
-    }
-
     if (options.check) {
       if (result.outdated.length === 0) {
-        write(`Board configuration is up to date (${result.boards.length} board(s)).`);
+        if (result.boards.length === 0) {
+          write(`No .ioc files found under ${options.boardsDir}`);
+        } else {
+          write(`Board configuration is up to date (${result.boards.length} board(s)).`);
+        }
+
         return;
       }
 
       writeError('Board configuration is out of date:');
 
       for (const file of result.outdated) {
-        writeError(`  ${path.relative(process.cwd(), file)}`);
+        writeError(`  ${displayPath(file)}`);
       }
 
       writeError('Run: make board');
@@ -110,10 +115,20 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (result.boards.length === 0) {
+      write(`No .ioc files found under ${options.boardsDir}`);
+
+      for (const file of result.removed) {
+        write(`Removed stale ${displayPath(file)}`);
+      }
+
+      return;
+    }
+
     write(`Generated ${result.boards.length} board(s):`);
 
     for (const file of result.written) {
-      write(`  ${path.relative(process.cwd(), file)}`);
+      write(`  ${displayPath(file)}`);
     }
   } catch (error) {
     if (error instanceof BoardConfigError) {

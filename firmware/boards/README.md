@@ -26,6 +26,17 @@ make board-check
 
 Generated files are committed so a firmware build does not need Node. Re-run `make board` after changing an `.ioc` file.
 
+## Select a board
+
+Name the board directory to add its header directory to the firmware include path:
+
+```
+make BOARD=<board> test
+make BOARD=<board> board-select
+```
+
+Any source can then include `board_config.h`. `board-select` fails with a clear message when `BOARD` is unset or its generated header is missing. The host tests do not depend on a board, so they still run without `BOARD`.
+
 ## What the header contains
 
 - MCU name, commercial part number, family, package, and firmware package version.

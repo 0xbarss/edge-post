@@ -1,5 +1,5 @@
 import type { Dirent } from 'node:fs';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -19,6 +19,7 @@ export interface GenerateBoardsOptions {
 export interface GenerateBoardsResult {
   boards: BoardProfile[];
   written: string[];
+  removed: string[];
   outdated: string[];
 }
 
@@ -132,11 +133,34 @@ async function writeOrCompare(
   written.push(filePath);
 }
 
+async function removeOrReport(
+  filePath: string,
+  check: boolean,
+  removed: string[],
+  outdated: string[],
+): Promise<void> {
+  try {
+    if (check) {
+      await readFile(filePath, 'utf8');
+      outdated.push(filePath);
+      return;
+    }
+
+    await unlink(filePath);
+    removed.push(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
 export async function generateBoards(
   options: GenerateBoardsOptions,
 ): Promise<GenerateBoardsResult> {
   const sources = await readBoardSources(options.rootDir, options.boardsDir);
   const written: string[] = [];
+  const removed: string[] = [];
   const outdated: string[] = [];
 
   for (const source of sources) {
@@ -157,11 +181,19 @@ export async function generateBoards(
       written,
       outdated,
     );
+  } else {
+    await removeOrReport(
+      path.join(options.boardsDir, 'boards.json'),
+      options.check,
+      removed,
+      outdated,
+    );
   }
 
   return {
     boards: sources.map((source) => source.profile),
     written,
+    removed,
     outdated,
   };
 }
