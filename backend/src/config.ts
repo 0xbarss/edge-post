@@ -1,3 +1,4 @@
+import { DEFAULT_BOARDS_FILE } from './boards.js';
 import { DEFAULT_DASHBOARD_DIRECTORY } from './dashboard.js';
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
@@ -11,6 +12,7 @@ export interface Config {
   httpHost: string;
   httpPort: number;
   dashboardDir: string;
+  boardsFile: string;
   logLevel: LogLevel;
 }
 
@@ -57,6 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     httpHost: readOptional(env, 'HTTP_HOST', '0.0.0.0'),
     httpPort: readPort(env, 'HTTP_PORT', 3000),
     dashboardDir: readOptional(env, 'DASHBOARD_DIR', DEFAULT_DASHBOARD_DIRECTORY),
+    boardsFile: readOptional(env, 'BOARDS_FILE', DEFAULT_BOARDS_FILE),
     logLevel: readLogLevel(env),
   };
 }

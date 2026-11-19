@@ -1,3 +1,4 @@
+import { loadBoards } from './boards.js';
 import { loadConfig } from './config.js';
 import { createPool } from './db.js';
 import { createLogger } from './logger.js';
@@ -13,7 +14,8 @@ async function start(): Promise<void> {
   const liveFeed = new LiveFeed(logger);
   const presence = new Presence(pool, logger, liveFeed);
   const tcpServer = new TcpServer({ pool, logger, presence, live: liveFeed });
-  const app = buildApp({ pool, logger, dashboardDir: config.dashboardDir });
+  const boards = await loadBoards(config.boardsFile, logger);
+  const app = buildApp({ pool, logger, dashboardDir: config.dashboardDir, boards });
 
   liveFeed.attach(app.server);
 
