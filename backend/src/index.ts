@@ -4,14 +4,18 @@ import { createLogger } from './logger.js';
 import { Presence } from './presence.js';
 import { buildApp } from './routes.js';
 import { TcpServer } from './tcp-server.js';
+import { LiveFeed } from './websocket.js';
 
 async function start(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
   const pool = createPool(config.databaseUrl);
-  const presence = new Presence(pool, logger);
-  const tcpServer = new TcpServer({ pool, logger, presence });
-  const app = buildApp({ pool, logger });
+  const liveFeed = new LiveFeed(logger);
+  const presence = new Presence(pool, logger, liveFeed);
+  const tcpServer = new TcpServer({ pool, logger, presence, live: liveFeed });
+  const app = buildApp({ pool, logger, dashboardDir: config.dashboardDir });
+
+  liveFeed.attach(app.server);
 
   let stopSweep: (() => void) | null = null;
   let shuttingDown = false;
@@ -27,6 +31,7 @@ async function start(): Promise<void> {
 
     try {
       await tcpServer.close();
+      await liveFeed.close();
       await app.close();
       await pool.end();
     } catch (error) {
@@ -57,6 +62,9 @@ async function start(): Promise<void> {
     stopSweep?.();
     await tcpServer.close().catch((closeError: unknown) => {
       logger.error({ err: closeError }, 'failed to close the tcp server');
+    });
+    await liveFeed.close().catch((closeError: unknown) => {
+      logger.error({ err: closeError }, 'failed to close the websocket server');
     });
     await app.close().catch((closeError: unknown) => {
       logger.error({ err: closeError }, 'failed to close the http server');

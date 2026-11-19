@@ -12,8 +12,11 @@ import {
   listReadings,
   registerDevice,
 } from './db.js';
+import { DEFAULT_DASHBOARD_DIRECTORY, registerDashboard } from './dashboard.js';
 import { AppError, ConflictError, NotFoundError, ValidationError } from './errors.js';
 import type { Logger } from './logger.js';
+import { MAX_DEVICE_ID, MIN_DEVICE_ID } from './models.js';
+import { hasExactKeys, isRecord } from './validation.js';
 
 export const MAX_HISTORY_RANGE_MS = 7 * 24 * 60 * 60 * 1000;
 export const DEFAULT_HISTORY_RANGE_MS = 60 * 60 * 1000;
@@ -26,15 +29,7 @@ const ISO_TIMESTAMP_PATTERN =
 export interface AppOptions {
   pool: Pool;
   logger: Logger;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function hasExactKeys(record: Record<string, unknown>, keys: readonly string[]): boolean {
-  const actual = Object.keys(record);
-  return actual.length === keys.length && keys.every((key) => actual.includes(key));
+  dashboardDir?: string;
 }
 
 function readBody(body: unknown): Record<string, unknown> {
@@ -54,15 +49,17 @@ function readInteger(value: unknown, minimum: number, maximum: number, field: st
 }
 
 function readDeviceId(value: unknown): number {
-  return readInteger(value, 1, 65535, 'deviceId');
+  return readInteger(value, MIN_DEVICE_ID, MAX_DEVICE_ID, 'deviceId');
 }
 
 function readPathDeviceId(value: string): number {
   if (!/^\d+$/.test(value)) {
-    throw new ValidationError('deviceId must be an integer between 1 and 65535');
+    throw new ValidationError(
+      `deviceId must be an integer between ${MIN_DEVICE_ID} and ${MAX_DEVICE_ID}`,
+    );
   }
 
-  return readInteger(Number(value), 1, 65535, 'deviceId');
+  return readInteger(Number(value), MIN_DEVICE_ID, MAX_DEVICE_ID, 'deviceId');
 }
 
 function readDeviceName(value: unknown): string {
@@ -249,6 +246,8 @@ export function buildApp(options: AppOptions): FastifyInstance {
     const command = await createCommand(options.pool, readBody(request.body));
     return reply.code(201).send({ data: command });
   });
+
+  registerDashboard(app, options.dashboardDir ?? DEFAULT_DASHBOARD_DIRECTORY, options.logger);
 
   return app;
 }

@@ -72,6 +72,19 @@ describe('reading ingestion', () => {
     expect(readings.map((reading) => reading.sequence)).toEqual([7, 7]);
   });
 
+  it('reports the online transition only when the device was offline', async () => {
+    const first = await ingestReading(database.pool, sample);
+    expect(first.statusChanged).toBe(true);
+
+    const second = await ingestReading(database.pool, { ...sample, sequence: 8 });
+    expect(second.statusChanged).toBe(false);
+
+    await database.pool.query("UPDATE devices SET status = 'offline' WHERE device_id = 4660");
+
+    const third = await ingestReading(database.pool, { ...sample, sequence: 9 });
+    expect(third.statusChanged).toBe(true);
+  });
+
   it('rolls the device upsert back when the reading is rejected', async () => {
     await expect(
       ingestReading(database.pool, { ...sample, temperatureTenths: 1501 }),

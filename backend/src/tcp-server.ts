@@ -16,6 +16,7 @@ import {
   type FrameReadResult,
 } from './frame.js';
 import type { Logger } from './logger.js';
+import type { LiveEventSink } from './models.js';
 import type { Presence } from './presence.js';
 
 export const MIN_POLL_INTERVAL_MS = 500;
@@ -35,6 +36,7 @@ export interface TcpServerOptions {
   pool: Pool;
   logger: Logger;
   presence: Presence;
+  live?: LiveEventSink;
   now?: () => number;
 }
 
@@ -311,7 +313,7 @@ export class TcpServer {
     }
 
     try {
-      await ingestReading(this.options.pool, {
+      const { device, reading, statusChanged } = await ingestReading(this.options.pool, {
         deviceId: frame.deviceId,
         sequence: frame.sequence,
         timestamp: frame.timestamp,
@@ -319,6 +321,12 @@ export class TcpServer {
         gpioState: frame.gpioState,
         sampleRate: frame.sampleRate,
       });
+
+      if (statusChanged) {
+        this.options.live?.publishStatus(device.deviceId, 'online');
+      }
+
+      this.options.live?.publishReading(reading);
     } catch (error) {
       this.options.logger.error(
         { err: error, deviceId: frame.deviceId },

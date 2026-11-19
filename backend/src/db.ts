@@ -7,6 +7,7 @@ import type {
   CommandStatus,
   CommandType,
   Device,
+  DeviceStatus,
   PendingCommand,
   Reading,
   ReadingInput,
@@ -65,33 +66,51 @@ async function queryRows<T extends QueryResultRow>(
   return result.rows;
 }
 
-export async function ingestReading(
-  pool: Pool,
-  input: ReadingInput,
-): Promise<{ device: Device; reading: Reading }> {
+export interface IngestReadingResult {
+  device: Device;
+  reading: Reading;
+  statusChanged: boolean;
+}
+
+interface IngestDeviceRow extends Device {
+  previousStatus: DeviceStatus;
+}
+
+export async function ingestReading(pool: Pool, input: ReadingInput): Promise<IngestReadingResult> {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    const devices = await queryRows<Device>(
+    const devices = await queryRows<IngestDeviceRow>(
       client,
       `
-        INSERT INTO devices (device_id, name, sample_rate, status)
-        VALUES ($1, $2, $3, 'online')
-        ON CONFLICT (device_id) DO UPDATE
-          SET last_seen   = now(),
-              status      = 'online',
-              sample_rate = EXCLUDED.sample_rate
-        RETURNING ${DEVICE_COLUMNS}
+        WITH previous AS (
+          SELECT status
+          FROM devices
+          WHERE device_id = $1
+        ), upsert AS (
+          INSERT INTO devices (device_id, name, sample_rate, status)
+          VALUES ($1, $2, $3, 'online')
+          ON CONFLICT (device_id) DO UPDATE
+            SET last_seen   = now(),
+                status      = 'online',
+                sample_rate = EXCLUDED.sample_rate
+          RETURNING ${DEVICE_COLUMNS}
+        )
+        SELECT upsert.*,
+               COALESCE((SELECT status FROM previous), 'offline') AS "previousStatus"
+        FROM upsert
       `,
       [input.deviceId, `device-${input.deviceId}`, input.sampleRate],
     );
-    const device = devices[0];
+    const row = devices[0];
 
-    if (device === undefined) {
+    if (row === undefined) {
       throw new Error('Device upsert returned no row');
     }
+
+    const { previousStatus, ...device } = row;
 
     const readings = await queryRows<Reading>(
       client,
@@ -116,7 +135,7 @@ export async function ingestReading(
     }
 
     await client.query('COMMIT');
-    return { device, reading };
+    return { device, reading, statusChanged: previousStatus !== device.status };
   } catch (error) {
     try {
       await client.query('ROLLBACK');
