@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Pool } from 'pg';
 
+import type { BoardProfile } from './board-profile.js';
 import { enqueueCommand, isCommandType } from './commands.js';
 import {
   getDevice,
@@ -30,6 +31,7 @@ export interface AppOptions {
   pool: Pool;
   logger: Logger;
   dashboardDir?: string;
+  boards?: BoardProfile[];
 }
 
 function readBody(body: unknown): Record<string, unknown> {
@@ -216,6 +218,10 @@ export function buildApp(options: AppOptions): FastifyInstance {
 
   app.get('/api/v1/devices', async () => {
     return { data: await listDevices(options.pool) };
+  });
+
+  app.get('/api/v1/boards', () => {
+    return { data: options.boards ?? [] };
   });
 
   app.get<{ Params: { id: string } }>('/api/v1/devices/:id', async (request) => {

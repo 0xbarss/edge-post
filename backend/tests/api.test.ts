@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { BoardProfile } from '../src/board-profile.js';
 import { ingestReading } from '../src/db.js';
 import { buildApp } from '../src/routes.js';
 import { useTestDatabase } from './helpers/database.js';
@@ -49,11 +50,27 @@ interface DataPayload<T> {
 
 const DEVICE = { deviceId: 4660, name: 'Bench node', sampleRate: 5 };
 
+const BOARD: BoardProfile = {
+  name: 'bench-board',
+  source: 'boards/bench-board/bench-board.ioc',
+  mcu: {
+    name: 'STM32G071CBTx',
+    cpn: null,
+    family: 'STM32G0',
+    package: 'LQFP48',
+  },
+  firmwarePackage: null,
+  clock: { sysclkHz: 64000000, hclkHz: 64000000, rtcSource: null },
+  peripherals: ['ADC1', 'SPI1'],
+  pins: [],
+  groups: { adc: [], uart: [], spi: [], i2c: [], outputs: [], inputs: [] },
+};
+
 describe('rest api', () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = buildApp({ pool: database.pool, logger: silentLogger });
+    app = buildApp({ pool: database.pool, logger: silentLogger, boards: [BOARD] });
     await app.ready();
   });
 
@@ -71,6 +88,13 @@ describe('rest api', () => {
     expect(response.statusCode).toBe(201);
     return response.json<DataPayload<DevicePayload>>().data;
   }
+
+  it('returns the board catalog', async () => {
+    const response = await app.inject({ method: 'GET', url: '/api/v1/boards' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<DataPayload<BoardProfile[]>>().data).toEqual([BOARD]);
+  });
 
   it('registers a device and returns it in the registry', async () => {
     const created = await registerDevice();

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ApiError, enqueueCommand, listDevices, listReadings, parseServerEvent } from './api';
+import { describeError, enqueueCommand, listDevices, listReadings, parseServerEvent } from './api';
 import { MAX_POINTS, RECONNECT_INITIAL_MS, mergePoints, nextReconnectDelay } from './telemetry';
 import type {
   CommandRow,
@@ -110,18 +110,6 @@ function createMockRecent(pts: ReadingPoint[]): RecentReading[] {
       temperature: pt.temperature,
       gpioState: i % 3 === 0 ? 0b00000101 : 0b00000001,
     }));
-}
-
-function describeError(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  if (error instanceof Error && error.message !== '') {
-    return error.message;
-  }
-
-  return fallback;
 }
 
 function toPoint(reading: Reading): ReadingPoint {
