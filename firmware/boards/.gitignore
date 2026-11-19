@@ -1,0 +1,8 @@
+# CubeMX sources stay local by default; this synthetic board is the one
+# tracked example. Do not force-add a private board source.
+*.ioc
+!synthetic-demo/synthetic-demo.ioc
+
+# Generated from the board sources above.
+board_config.h
+boards.json

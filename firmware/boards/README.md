@@ -6,12 +6,19 @@ Firmware settings that depend on the MCU and the PCB come from an STM32CubeMX `.
 
 ```
 firmware/boards/
-  boards.json                 generated catalog read by the backend
-  <board>/<board>.ioc         CubeMX project committed with the board
-  <board>/board_config.h      generated C header; do not edit
+  README.md
+  .gitignore
+  synthetic-demo/synthetic-demo.ioc   committed example
+  <board>/<board>.ioc                 local, ignored
+  <board>/board_config.h              generated, ignored
+  boards.json                         generated, ignored
 ```
 
 Each board directory holds exactly one `.ioc` file. The board name comes from `ProjectManager.ProjectName`, or from the file name when that key is absent.
+
+Board sources and generated files are local by default. The synthetic example under `synthetic-demo/` is the only `.ioc` file tracked in Git; it exists so the generator, board selection, and dashboard catalog can be exercised without a real board. Do not force-add a private board source.
+
+The backend parser tests use a separate fixture at `backend/tests/fixtures/synthetic-board.ioc`, so they do not depend on a board directory.
 
 ## Generate
 
@@ -22,9 +29,9 @@ make board
 make board-check
 ```
 
-`make board` writes `board_config.h` next to each `.ioc` file and rebuilds `boards.json`. `make board-check` compares the generated files with what is committed and exits non-zero when they differ. The backend command behind both targets is `npm run board:generate`; both targets require Node and the backend `node_modules`.
+`make board` writes `board_config.h` next to each `.ioc` file and rebuilds `boards.json`. `make board-check` compares the generated files with the local sources and exits non-zero when they differ or a file is missing; run `make board` first on a fresh checkout. The backend command behind both targets is `npm run board:generate`; both targets require Node and the backend `node_modules`.
 
-Generated files are committed so a firmware build does not need Node. Re-run `make board` after changing an `.ioc` file.
+Generated files are ignored by Git. A fresh clone therefore has no `boards.json`, and the backend catalog is empty until someone runs `make board` with the board sources present.
 
 ## Select a board
 
@@ -61,6 +68,6 @@ The generator records every label, including ones that do not follow a conventio
 ## Adding a board
 
 1. Create the CubeMX project and set `ProjectManager.ProjectName` to the board name.
-2. Add `firmware/boards/<board>/<board>.ioc`. Commit it only if the file can be published with the repository.
-3. Run `make board` and commit the generated `board_config.h` and `boards.json`.
-4. Run `make board-check` in the review gate.
+2. Put `firmware/boards/<board>/<board>.ioc` in place. It stays ignored by Git.
+3. Run `make board` and then `make BOARD=<board> board-select`.
+4. Do not commit the source or generated files. If a board is intentionally public, add an explicit negation to `firmware/boards/.gitignore` and commit the source and generated files together.
