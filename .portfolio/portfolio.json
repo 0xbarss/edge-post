@@ -1,0 +1,180 @@
+{
+  "tagline": {
+    "en": "A self-hosted telemetry platform bridging STM32 microcontrollers and a real-time web dashboard for live monitoring and hardware control",
+    "tr": "STM32 mikrodenetleyicileri canlı izleme ve donanım kontrolü için gerçek zamanlı bir web paneline bağlayan, bağımsız telemetri platformu"
+  },
+  "cover": "cover.png",
+  "coverAspectRatio": "1280 / 640",
+  "highlights": [
+    {
+      "en": "Direct sensor-to-server communication using lightweight 8-byte binary packets protected by CRC-8 checksums",
+      "tr": "Sensör verilerini CRC-8 sağlama toplamıyla korunan 8 baytlık hafif ikili paketlerle doğrudan sunucuya aktarır"
+    },
+    {
+      "en": "Sub-second live telemetry streaming over WebSockets with smooth SVG temperature waveforms and trend tracking",
+      "tr": "Akıcı SVG sıcaklık grafikleri ve yön göstergeleri sunan, WebSocket tabanlı anlık veri akışı"
+    },
+    {
+      "en": "Interactive hardware dispatch console allowing operators to toggle physical microcontroller pins and adjust report rates",
+      "tr": "Mikrodenetleyici pinlerini uzaktan açıp kapatmayı ve veri gönderme aralığını anında değiştirmeyi sağlayan kontrol konsolu"
+    },
+    {
+      "en": "Zero-configuration device onboarding that automatically enrolls unknown sensor nodes on their very first packet",
+      "tr": "Yeni bağlanan cihazları ilk veri paketinde hiçbir manuel ayar gerektirmeden otomatik olarak sisteme kaydeder"
+    },
+    {
+      "en": "Intelligent heartbeat monitoring that flags silent or disconnected devices after a 15-second expiration sweep",
+      "tr": "15 saniyelik kalp atışı denetimiyle yanıt vermeyen veya bağlantısı kopan cihazları anında çevrimdışı işaretler"
+    },
+    {
+      "en": "Completely self-hosted architecture with zero third-party cloud lock-in, deployable in one command with Docker Compose",
+      "tr": "Harici bulut servislerine bağımlılığı olmayan, Docker Compose ile tek komutla kurulan tamamen bağımsız altyapı"
+    }
+  ],
+  "links": [
+    {
+      "label": {
+        "en": "Source Code",
+        "tr": "Kaynak Kod"
+      },
+      "url": "https://github.com/0xbarss/edge-post"
+    },
+    {
+      "label": {
+        "en": "System Architecture",
+        "tr": "Sistem Mimarisi"
+      },
+      "url": "https://github.com/0xbarss/edge-post#architecture--design"
+    },
+    {
+      "label": {
+        "en": "Wire Protocol",
+        "tr": "İletişim Protokolü"
+      },
+      "url": "https://github.com/0xbarss/edge-post#wire-protocol"
+    },
+    {
+      "label": {
+        "en": "REST API Reference",
+        "tr": "REST API Belgesi"
+      },
+      "url": "https://github.com/0xbarss/edge-post#api-reference"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "text",
+      "body": {
+        "en": "Most IoT architectures are unnecessarily fragmented. Microcontroller firmware is written in isolation, sensor data is thrown into expensive third-party cloud services with unpredictable pricing, and sending commands back to the hardware often feels like an afterthought. I built edge-post to solve this end-to-end: physical microcontrollers gather analog and digital readings, stream them to a local server over low-latency TCP sockets, and operators monitor and control the entire fleet live from a modern web dashboard without any cloud lock-in.",
+        "tr": "Çoğu IoT sistemi gereksiz yere parçalıdır. Mikrodenetleyici yazılımı tek başına geliştirilir, sensör verileri öngörülemeyen maliyetlere sahip harici bulut servislerine fırlatılır ve fiziksel cihaza uzaktan komut göndermek genelde en son akla gelir. edge-post ile uçtan uca, tamamen bağımsız bir yapı kurdum: fiziksel mikrodenetleyiciler analog ve dijital ölçümleri topluyor, doğrudan yerel bir sunucuya düşük gecikmeli TCP ile aktarıyor ve operatörler tüm cihazları hiçbir bulut servisine bağımlı olmadan modern bir web arayüzünden canlı yönetebiliyor."
+      }
+    },
+    {
+      "type": "image",
+      "src": "architecture.png",
+      "caption": {
+        "en": "Figure 1: End-to-end system topology separating edge firmware, central ingestion core, and reactive web console",
+        "tr": "Şekil 1: Uç cihaz yazılımını, merkezi veri işleme çekirdeğini ve reaktif web panelini birbirine bağlayan sistem mimarisi"
+      },
+      "aspectRatio": "1200 / 640",
+      "width": 1200,
+      "height": 640
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "When you run on low-power chips over real-world networks, sending bloated JSON text wastes CPU cycles and battery life. Instead, the firmware packs each measurement into tiny, 8-byte binary packets protected by CRC-8 checksums. If a packet gets corrupted or truncated over the wire, the server rejects it immediately rather than saving corrupt data. This keeps the network footprint minimal and guarantees that invalid values never pollute database history.",
+        "tr": "Düşük güç tüketen mikrodenetleyicilerde ağ üzerinden JSON gibi hantal metinler göndermek hem işlemciyi hem de bataryayı gereksiz yere tüketir. Bunun yerine cihazlar her ölçümü CRC-8 sağlama toplamıyla korunan 8 baytlık kompakt ikili paketlere sarıyor. İletim sırasında bir bit bozulsa veya paket yarım kalsa bile sunucu bunu anında yakalayıp eliyor; böylece veritabanı hiçbir zaman hatalı değerlerle kirlenmiyor."
+      }
+    },
+    {
+      "type": "image",
+      "src": "telemetry_chart.png",
+      "caption": {
+        "en": "Figure 2: Real-time sensor temperature waveform with historical window mean baseline and statistical envelope",
+        "tr": "Şekil 2: Tarihsel pencere ortalamasını ve istatistiksel sınırları gösteren gerçek zamanlı sensör sıcaklık dalga formu"
+      },
+      "aspectRatio": "1200 / 640",
+      "width": 1200,
+      "height": 640
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "A single backend process runs both the raw TCP listener for sensor packets and a Fastify web server. When a device checks in, it is automatically enrolled on its very first packet without manual database seeding. Readings are saved to PostgreSQL and simultaneously broadcast to connected browser clients over WebSockets. The dashboard charts update in real time with smooth SVG gradient curves, calculating rolling averages and showing instant temperature trends at a glance.",
+        "tr": "Tek bir sunucu süreci hem sensörlerden gelen ham TCP paketlerini karşılıyor hem de web arayüzünü besliyor. Bir cihaz ilk paketini gönderdiği anda elle veritabanı ayarı yapmaya gerek kalmadan sisteme otomatik kaydoluyor. Gelen ölçümler PostgreSQL'e yazılırken aynı anda WebSocket üzerinden tarayıcılara iletiliyor. Web arayüzündeki grafikler saniyelik güncellemelerle akıcı bir şekilde çiziliyor ve değerlerin gidişatını anında gösteriyor."
+      }
+    },
+    {
+      "type": "image",
+      "src": "device_controls.png",
+      "caption": {
+        "en": "Figure 3: Hardware dispatch console for remote GPIO pin toggling and dynamic reporting interval adjustment",
+        "tr": "Şekil 3: Donanım pinlerini uzaktan tetiklemeyi ve veri gönderme sıklığını ayarlamayı sağlayan kontrol konsolu"
+      },
+      "aspectRatio": "1200 / 640",
+      "width": 1200,
+      "height": 640
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "Telemetry shouldn't just be a one-way mirror. If a temperature reading spikes, an operator needs to react immediately—like turning on an exhaust fan or increasing the sampling rate. The dashboard provides an interactive control console where users can toggle physical GPIO pins or adjust how frequently the sensor reports. Commands sit in an atomic database queue (SKIP LOCKED) and are delivered the next time the device polls, guaranteeing safe execution without overwhelming constrained microcontroller radios.",
+        "tr": "Telemetri sadece tek yönlü veri izlemekten ibaret kalmamalı. Sıcaklık aniden yükseldiğinde operatörün hemen müdahale edebilmesi gerekir; örneğin bir soğutma fanını açmak veya ölçüm sıklığını artırmak gibi. Web arayüzündeki kontrol paneliyle cihazın fiziksel pinleri uzaktan açılıp kapatılabiliyor ve okuma aralığı anında değiştirilebiliyor. Gönderilen komutlar veritabanında güvenli bir kuyrukta tutuluyor ve cihazın bir sonraki yoklamasında güvenle teslim ediliyor."
+      }
+    },
+    {
+      "type": "image",
+      "src": "telemetry_stream.png",
+      "caption": {
+        "en": "Figure 4: Real-time packet ledger displaying raw decoded sensor frames, step deltas, and output bus bitmasks",
+        "tr": "Şekil 4: Çözümlenmiş sensör paketlerini, anlık değişimleri ve çıkış veri yolunu gösteren canlı veri defteri"
+      },
+      "aspectRatio": "1200 / 640",
+      "width": 1200,
+      "height": 640
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "Field diagnostics require absolute clarity. A live ledger displays every incoming binary packet decoded into exact timestamps, temperature deltas, and raw 8-bit bus bitmasks. Operators can inspect exact changes from frame to frame, giving immediate insight into what the device is measuring and how it responded to recent dispatch commands.",
+        "tr": "Sahada sorun çözerken şeffaflık her şeydir. Canlı veri defteri gelen her ikili paketi zaman damgası, sıcaklık değişimi ve 8 bitlik çıkış durumuyla birlikte anında çözümler. Operatörler paketten pakete yaşanan değişimleri inceleyerek cihazın o an ne ölçtüğünü ve gönderilen komutlara nasıl yanıt verdiğini anında görebilir."
+      }
+    },
+    {
+      "type": "image",
+      "src": "fleet_management.png",
+      "caption": {
+        "en": "Figure 5: Multi-node fleet index and presence monitor tracking active sensors and connection heartbeats",
+        "tr": "Şekil 5: Aktif sensörleri ve bağlantı kalp atışlarını takip eden çoklu cihaz listesi ve durum paneli"
+      },
+      "aspectRatio": "1200 / 640",
+      "width": 1200,
+      "height": 640
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "In production, sensors don't stay online forever—cables get unplugged, power fluctuates, and Wi-Fi drops. A background heartbeat monitor watches every reporting interval: if a sensor node goes silent for more than 15 seconds, the system instantly flags it as offline and updates the UI so operators never wonder if a flatlined chart means stable room temperature or a severed connection.",
+        "tr": "Gerçek saha koşullarında cihazlar her zaman bağlı kalamaz; kablolar çıkabilir, elektrik kesilebilir veya ağ kopabilir. Arka planda çalışan kalp atışı denetleyicisi her cihazın raporlama aralığını izler: eğer bir sensör 15 saniyeden uzun süre sessiz kalırsa sistem durumu hemen 'çevrimdışı' olarak işaretler ve arayüzü günceller. Böylece operatör, düz bir çizginin sabit oda sıcaklığı mı yoksa kopmuş bir kablo mu olduğunu hemen anlar."
+      }
+    },
+    {
+      "type": "gallery",
+      "images": [
+        "dark_operations.png",
+        "dark_chart.png",
+        "dark_stream.png",
+        "dark_offline.png",
+        "full_light.png"
+      ]
+    },
+    {
+      "type": "text",
+      "body": {
+        "en": "The dashboard includes responsive light and dark themes built around high-contrast accessibility standards. The entire project is backed by comprehensive automated test suites—including host C unit tests running under AddressSanitizer and UndefinedBehaviorSanitizer, PostgreSQL integration tests, and dashboard component tests. Packaged into a single Docker Compose stack, it is ready to run on any local server or hardware test bench.",
+        "tr": "Kontrol paneli, erişilebilirlik standartlarına uygun açık ve koyu tema seçenekleri sunar. Projenin tamamı kapsamlı testlerle güvence altına alınmıştır: bellek hatalarını yakalayan ASan/UBSan denetleyicileri altında çalışan C firmware testleri, PostgreSQL entegrasyon testleri ve arayüz testleri kod tabanının her katmanını doğrular. Docker Compose ile tek komutla ayağa kaldırılabilen mimari, yerel bir sunucuda veya özel donanım test ortamında hemen çalışmaya hazırdır."
+      }
+    }
+  ]
+}
