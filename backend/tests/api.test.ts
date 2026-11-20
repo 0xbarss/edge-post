@@ -64,6 +64,13 @@ const BOARD: BoardProfile = {
   peripherals: ['ADC1', 'SPI1'],
   pins: [],
   groups: { adc: [], uart: [], spi: [], i2c: [], outputs: [], inputs: [] },
+  roles: {
+    temperature: null,
+    networkSpi: null,
+    networkUart: null,
+    networkCsPin: null,
+    outputs: [],
+  },
 };
 
 describe('rest api', () => {

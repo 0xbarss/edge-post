@@ -106,6 +106,149 @@ describe('parseIoc', () => {
     ]);
   });
 
+  it('resolves roles from pin labels', async () => {
+    const profile = parseIoc(await loadFixture(), 'synthetic-board.ioc');
+
+    expect(profile.roles.temperature).toEqual({
+      instance: 'ADC1',
+      channel: 0,
+      pin: 'PA0',
+      label: 'TEMP_SENSE',
+    });
+    expect(profile.roles.networkSpi).toEqual({
+      instance: 'SPI1',
+      sckPin: 'PA5',
+      misoPin: 'PA6',
+      mosiPin: 'PA7',
+      nssPin: null,
+    });
+    expect(profile.roles.networkUart).toBeNull();
+    expect(profile.roles.networkCsPin).toBeNull();
+    expect(profile.roles.outputs).toEqual([]);
+  });
+
+  it('resolves the network chip select and controllable outputs', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PA4',
+      'Mcu.Pin1=PA5',
+      'Mcu.Pin2=PA6',
+      'Mcu.Pin3=PA7',
+      'Mcu.Pin4=PB5',
+      'PA4.Signal=SPI1_NSS',
+      'PA4.GPIO_Label=NET_CS',
+      'PA5.Signal=SPI1_SCK',
+      'PA5.GPIO_Label=NET_SCK',
+      'PA6.Signal=SPI1_MISO',
+      'PA6.GPIO_Label=NET_MISO',
+      'PA7.Signal=SPI1_MOSI',
+      'PA7.GPIO_Label=NET_MOSI',
+      'PB5.Signal=GPIO_Output',
+      'PB5.GPIO_Label=OUT_RELAY_1',
+      '',
+    ].join('\n');
+    const profile = parseIoc(source, 'roles.ioc');
+
+    expect(profile.roles.networkSpi).toEqual({
+      instance: 'SPI1',
+      sckPin: 'PA5',
+      misoPin: 'PA6',
+      mosiPin: 'PA7',
+      nssPin: 'PA4',
+    });
+    expect(profile.roles.networkCsPin).toBe('PA4');
+    expect(profile.roles.outputs).toEqual([{ pin: 'PB5', label: 'OUT_RELAY_1' }]);
+  });
+
+  it('resolves a network UART from NET_ labels', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PB6',
+      'Mcu.Pin1=PB7',
+      'PB6.Signal=USART2_TX',
+      'PB6.GPIO_Label=NET_TX',
+      'PB7.Signal=USART2_RX',
+      'PB7.GPIO_Label=NET_RX',
+      '',
+    ].join('\n');
+    const profile = parseIoc(source, 'uart-roles.ioc');
+
+    expect(profile.roles.networkSpi).toBeNull();
+    expect(profile.roles.networkUart).toEqual({
+      instance: 'USART2',
+      txPin: 'PB6',
+      rxPin: 'PB7',
+    });
+  });
+
+  it('rejects more than one TEMP_ ADC channel', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PA0',
+      'Mcu.Pin1=PA1',
+      'PA0.Signal=ADC1_IN0',
+      'PA0.GPIO_Label=TEMP_A',
+      'PA1.Signal=ADC1_IN1',
+      'PA1.GPIO_Label=TEMP_B',
+      '',
+    ].join('\n');
+
+    expect(() => parseIoc(source, 'ambiguous.ioc')).toThrow(
+      'Only one ADC channel may use the TEMP_ label prefix',
+    );
+  });
+
+  it('rejects NET_ labels on both SPI and UART', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PA5',
+      'Mcu.Pin1=PB6',
+      'PA5.Signal=SPI1_SCK',
+      'PA5.GPIO_Label=NET_SCK',
+      'PB6.Signal=USART2_TX',
+      'PB6.GPIO_Label=NET_TX',
+      '',
+    ].join('\n');
+
+    expect(() => parseIoc(source, 'ambiguous.ioc')).toThrow(
+      'The NET_ labels resolve to both SPI and UART',
+    );
+  });
+
+  it('rejects NET_ labels on two SPI instances', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PA5',
+      'Mcu.Pin1=PB13',
+      'PA5.Signal=SPI1_SCK',
+      'PA5.GPIO_Label=NET_SCK',
+      'PB13.Signal=SPI2_SCK',
+      'PB13.GPIO_Label=NET_SCK',
+      '',
+    ].join('\n');
+
+    expect(() => parseIoc(source, 'ambiguous.ioc')).toThrow(
+      'Only one SPI instance may use the NET_ label prefix',
+    );
+  });
+
+  it('rejects more than one NET_CS label', () => {
+    const source = [
+      'Mcu.Name=STM32G071CBTx',
+      'Mcu.Pin0=PB5',
+      'Mcu.Pin1=PB6',
+      'PB5.Signal=GPIO_Output',
+      'PB5.GPIO_Label=NET_CS',
+      'PB6.Signal=GPIO_Output',
+      'PB6.GPIO_Label=NET_CS',
+      '',
+    ].join('\n');
+
+    expect(() => parseIoc(source, 'ambiguous.ioc')).toThrow(
+      'Only one pin may use the NET_CS label',
+    );
+  });
+
   it('falls back to the file name when the project name is absent', () => {
     const profile = parseIoc('Mcu.Name=STM32G071CBTx\n', 'boards/unnamed/board.ioc');
 
@@ -156,6 +299,21 @@ describe('renderBoardHeader', () => {
     expect(header).toContain('#define BOARD_GPIO_OUTPUT1_LABEL "RELAY_1"');
     expect(header).toContain('#define BOARD_GPIO_INPUT_COUNT 2u');
     expect(header.endsWith('\n')).toBe(true);
+  });
+
+  it('emits role macros resolved from labels', async () => {
+    const header = renderBoardHeader(parseIoc(await loadFixture(), 'synthetic-board.ioc'));
+
+    expect(header).toContain('#define BOARD_TEMP_ADC_INSTANCE "ADC1"');
+    expect(header).toContain('#define BOARD_TEMP_ADC_CHANNEL 0u');
+    expect(header).toContain('#define BOARD_TEMP_ADC_PIN "PA0"');
+    expect(header).toContain('#define BOARD_NET_SPI_INSTANCE "SPI1"');
+    expect(header).toContain('#define BOARD_NET_SPI_SCK_PIN "PA5"');
+    expect(header).toContain('#define BOARD_NET_SPI_MISO_PIN "PA6"');
+    expect(header).toContain('#define BOARD_NET_SPI_MOSI_PIN "PA7"');
+    expect(header).not.toContain('BOARD_NET_UART_INSTANCE');
+    expect(header).not.toContain('BOARD_NET_CS_PIN');
+    expect(header).toContain('#define BOARD_OUT_COUNT 0u');
   });
 
   it('escapes quotes and backslashes in labels', () => {

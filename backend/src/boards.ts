@@ -7,6 +7,7 @@ import type {
   BoardI2c,
   BoardPin,
   BoardProfile,
+  BoardRoles,
   BoardSpi,
   BoardUart,
 } from './board-profile.js';
@@ -82,7 +83,20 @@ function isGpio(value: unknown): value is BoardGpio {
   return isRecord(value) && typeof value.pin === 'string' && isNullableString(value.label);
 }
 
-function isBoardProfile(value: unknown): value is BoardProfile {
+function isBoardRoles(value: unknown): value is BoardRoles {
+  return (
+    isRecord(value) &&
+    (value.temperature === null || isAdcChannel(value.temperature)) &&
+    (value.networkSpi === null || isSpi(value.networkSpi)) &&
+    (value.networkUart === null || isUart(value.networkUart)) &&
+    isNullableString(value.networkCsPin) &&
+    isArrayOf(value.outputs, isGpio)
+  );
+}
+
+type StoredBoardProfile = Omit<BoardProfile, 'roles'> & { roles?: BoardRoles };
+
+function isBoardProfile(value: unknown): value is StoredBoardProfile {
   return (
     isRecord(value) &&
     typeof value.name === 'string' &&
@@ -105,8 +119,19 @@ function isBoardProfile(value: unknown): value is BoardProfile {
     isArrayOf(value.groups.spi, isSpi) &&
     isArrayOf(value.groups.i2c, isI2c) &&
     isArrayOf(value.groups.outputs, isGpio) &&
-    isArrayOf(value.groups.inputs, isGpio)
+    isArrayOf(value.groups.inputs, isGpio) &&
+    (value.roles === undefined || isBoardRoles(value.roles))
   );
+}
+
+function emptyRoles(): BoardRoles {
+  return {
+    temperature: null,
+    networkSpi: null,
+    networkUart: null,
+    networkCsPin: null,
+    outputs: [],
+  };
 }
 
 export async function loadBoards(filePath: string, logger: Logger): Promise<BoardProfile[]> {
@@ -138,7 +163,9 @@ export async function loadBoards(filePath: string, logger: Logger): Promise<Boar
     return [];
   }
 
-  const boards = parsed.boards.filter(isBoardProfile);
+  const boards = parsed.boards
+    .filter(isBoardProfile)
+    .map((board) => ({ ...board, roles: board.roles ?? emptyRoles() }));
 
   if (boards.length !== parsed.boards.length) {
     logger.warn(
