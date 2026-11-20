@@ -1,0 +1,10 @@
+.git
+.github
+docs
+.env
+.env.*
+**/node_modules
+**/dist
+**/coverage
+firmware
+**/*.log
