@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: edge
+          POSTGRES_PASSWORD: edge
+          POSTGRES_DB: edge_post_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U edge -d edge_post_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:integration
+        env:
+          TEST_DATABASE_URL: postgres://edge:edge@localhost:5432/edge_post_test
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  firmware:
+    name: Firmware host tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install pinned C tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/c-tools"
+          "$RUNNER_TEMP/c-tools/bin/pip" install --disable-pip-version-check \
+            "clang-format==23.1.5" "clang-tidy==23.1.4"
+          echo "$RUNNER_TEMP/c-tools/bin" >> "$GITHUB_PATH"
+      - name: Install backend dependencies for board generation
+        run: npm ci --prefix backend
+      - name: Host tests with GCC
+        run: make -C firmware clean test CC=gcc
+      - name: Host tests with Clang
+        run: make -C firmware clean test CC=clang
+      - name: Format check
+        run: make -C firmware format-check
+      - name: Static analysis
+        run: make -C firmware lint
+      - name: Generate board files
+        run: make -C firmware board
+      - name: Check board drift
+        run: make -C firmware board-check
+      - name: Select the synthetic board
+        run: make -C firmware BOARD=synthetic-demo board-select
