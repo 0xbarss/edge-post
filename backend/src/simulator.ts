@@ -96,7 +96,7 @@ function simulateNode(state: DeviceState): void {
         kind: 'ack',
         deviceId: state.deviceId,
         commandId,
-        status: 1,
+        status: 0,
       });
       socket.write(ack);
     }
