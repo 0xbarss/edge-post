@@ -75,6 +75,36 @@ describe('generateBoards', () => {
     expect(check.outdated).toEqual([]);
   });
 
+  it('writes role macros resolved from labels', async () => {
+    const root = await createRoot();
+    const boardDirectory = path.join(root, 'boards', 'roles');
+    await mkdir(boardDirectory, { recursive: true });
+    await writeFile(
+      path.join(boardDirectory, 'roles.ioc'),
+      [
+        'Mcu.Name=STM32G071CBTx',
+        'Mcu.Pin0=PA0',
+        'Mcu.Pin1=PB5',
+        'PA0.Signal=ADC1_IN0',
+        'PA0.GPIO_Label=TEMP_SENSE',
+        'PB5.Signal=GPIO_Output',
+        'PB5.GPIO_Label=OUT_RELAY_1',
+        'ProjectManager.ProjectName=roles',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const boardsDir = path.join(root, 'boards');
+
+    await generateBoards({ rootDir: root, boardsDir, check: false });
+    const header = await readFile(path.join(boardDirectory, 'board_config.h'), 'utf8');
+
+    expect(header).toContain('#define BOARD_TEMP_ADC_CHANNEL 0u');
+    expect(header).toContain('#define BOARD_OUT_COUNT 1u');
+    expect(header).toContain('#define BOARD_OUT0_PIN "PB5"');
+    expect(header).toContain('#define BOARD_OUT0_LABEL "OUT_RELAY_1"');
+  });
+
   it('reports stale headers and manifest after the .ioc changes', async () => {
     const root = await createRoot();
     await addBoard(root, 'alpha', 'alpha.ioc', 'alpha');

@@ -24,6 +24,13 @@ const BOARD: BoardProfile = {
   peripherals: ['ADC1', 'SPI1'],
   pins: [],
   groups: { adc: [], uart: [], spi: [], i2c: [], outputs: [], inputs: [] },
+  roles: {
+    temperature: null,
+    networkSpi: null,
+    networkUart: null,
+    networkCsPin: null,
+    outputs: [],
+  },
 };
 
 function captureLogger(): { logger: Logger; messages: string[] } {
@@ -101,6 +108,16 @@ describe('loadBoards', () => {
     expect(messages).toEqual(['warn:board catalog contains invalid entries']);
   });
 
+  it('fills empty roles for catalogs generated before roles existed', async () => {
+    const legacy: Record<string, unknown> = { ...BOARD };
+    delete legacy.roles;
+    const filePath = await createManifest(JSON.stringify({ boards: [legacy] }));
+    const { logger, messages } = captureLogger();
+
+    await expect(loadBoards(filePath, logger)).resolves.toEqual([BOARD]);
+    expect(messages).toEqual([]);
+  });
+
   it('skips entries with malformed nested fields', async () => {
     const badClock = { ...BOARD, name: 'bad-clock', clock: { sysclkHz: 64000000 } };
     const badGroups = {
@@ -108,7 +125,10 @@ describe('loadBoards', () => {
       name: 'bad-groups',
       groups: { ...BOARD.groups, adc: {} },
     };
-    const filePath = await createManifest(JSON.stringify({ boards: [BOARD, badClock, badGroups] }));
+    const badRoles = { ...BOARD, name: 'bad-roles', roles: { temperature: {} } };
+    const filePath = await createManifest(
+      JSON.stringify({ boards: [BOARD, badClock, badGroups, badRoles] }),
+    );
     const { logger, messages } = captureLogger();
 
     await expect(loadBoards(filePath, logger)).resolves.toEqual([BOARD]);

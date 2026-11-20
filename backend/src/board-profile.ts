@@ -61,6 +61,14 @@ export interface BoardGroups {
   inputs: BoardGpio[];
 }
 
+export interface BoardRoles {
+  temperature: BoardAdcChannel | null;
+  networkSpi: BoardSpi | null;
+  networkUart: BoardUart | null;
+  networkCsPin: string | null;
+  outputs: BoardGpio[];
+}
+
 export interface BoardProfile {
   name: string;
   source: string;
@@ -70,6 +78,7 @@ export interface BoardProfile {
   peripherals: string[];
   pins: BoardPin[];
   groups: BoardGroups;
+  roles: BoardRoles;
 }
 
 export interface BoardsManifest {
@@ -98,6 +107,11 @@ const ADC_PATTERN = /^ADC(\d+)_IN(\d+)$/;
 const UART_PATTERN = /^(LPUART|USART|UART)(\d+)_(TX|RX)$/;
 const SPI_PATTERN = /^SPI(\d+)_(SCK|MISO|MOSI|NSS)$/;
 const I2C_PATTERN = /^I2C(\d+)_(SCL|SDA)$/;
+
+const TEMPERATURE_PREFIX = 'TEMP_';
+const NETWORK_PREFIX = 'NET_';
+const NETWORK_CS_LABEL = 'NET_CS';
+const OUTPUT_PREFIX = 'OUT_';
 
 function unescapeKey(key: string): string {
   return key.replace(/\\(.)/g, '$1');
@@ -342,6 +356,85 @@ function collectGroups(pins: BoardPin[]): BoardGroups {
   };
 }
 
+function collectRoles(pins: BoardPin[], groups: BoardGroups, source: string): BoardRoles {
+  const temperatureChannels = groups.adc.filter(
+    (channel) => channel.label !== null && channel.label.startsWith(TEMPERATURE_PREFIX),
+  );
+
+  if (temperatureChannels.length > 1) {
+    throw new BoardConfigError(
+      `Only one ADC channel may use the ${TEMPERATURE_PREFIX} label prefix`,
+      source,
+    );
+  }
+
+  const networkPins = pins.filter(
+    (pin) => pin.label !== null && pin.label.startsWith(NETWORK_PREFIX),
+  );
+  const networkSpiInstances = new Set<string>();
+  const networkUartInstances = new Set<string>();
+
+  for (const pin of networkPins) {
+    const spiMatch = SPI_PATTERN.exec(pin.signal);
+
+    if (spiMatch !== null) {
+      networkSpiInstances.add(`SPI${spiMatch[1]}`);
+    }
+
+    const uartMatch = UART_PATTERN.exec(pin.signal);
+
+    if (uartMatch !== null) {
+      networkUartInstances.add(`${uartMatch[1]}${uartMatch[2]}`);
+    }
+  }
+
+  if (networkSpiInstances.size > 1) {
+    throw new BoardConfigError(
+      `Only one SPI instance may use the ${NETWORK_PREFIX} label prefix`,
+      source,
+    );
+  }
+
+  if (networkUartInstances.size > 1) {
+    throw new BoardConfigError(
+      `Only one UART instance may use the ${NETWORK_PREFIX} label prefix`,
+      source,
+    );
+  }
+
+  if (networkSpiInstances.size === 1 && networkUartInstances.size === 1) {
+    throw new BoardConfigError(
+      `The ${NETWORK_PREFIX} labels resolve to both SPI and UART; the network link must use one transport`,
+      source,
+    );
+  }
+
+  const networkCsPins = pins.filter((pin) => pin.label === NETWORK_CS_LABEL);
+
+  if (networkCsPins.length > 1) {
+    throw new BoardConfigError(`Only one pin may use the ${NETWORK_CS_LABEL} label`, source);
+  }
+
+  const networkSpiInstance = networkSpiInstances.values().next().value ?? null;
+  const networkUartInstance = networkUartInstances.values().next().value ?? null;
+
+  return {
+    temperature: temperatureChannels[0] ?? null,
+    networkSpi:
+      networkSpiInstance === null
+        ? null
+        : (groups.spi.find((spi) => spi.instance === networkSpiInstance) ?? null),
+    networkUart:
+      networkUartInstance === null
+        ? null
+        : (groups.uart.find((uart) => uart.instance === networkUartInstance) ?? null),
+    networkCsPin: networkCsPins[0]?.pin ?? null,
+    outputs: groups.outputs.filter(
+      (output) => output.label !== null && output.label.startsWith(OUTPUT_PREFIX),
+    ),
+  };
+}
+
 export function parseIoc(text: string, source: string): BoardProfile {
   const entries = parseEntries(text, source);
   const mcuName = getValue(entries, 'Mcu.Name');
@@ -384,6 +477,7 @@ export function parseIoc(text: string, source: string): BoardProfile {
 
   const projectName = getValue(entries, 'ProjectManager.ProjectName');
   const fallbackName = path.basename(source, path.extname(source));
+  const groups = collectGroups(pins);
 
   return {
     name: projectName ?? fallbackName,
@@ -402,7 +496,8 @@ export function parseIoc(text: string, source: string): BoardProfile {
     },
     peripherals: collectPeripherals(entries),
     pins,
-    groups: collectGroups(pins),
+    groups,
+    roles: collectRoles(pins, groups, source),
   };
 }
 
@@ -564,6 +659,59 @@ export function renderBoardHeader(profile: BoardProfile): string {
 
     if (input.label !== null) {
       define(lines, `BOARD_GPIO_INPUT${index}_LABEL`, cString(input.label));
+    }
+  }
+
+  if (profile.roles.temperature !== null) {
+    lines.push('', '/* Temperature role resolved from the TEMP_ label prefix. */');
+    define(lines, 'BOARD_TEMP_ADC_INSTANCE', cString(profile.roles.temperature.instance));
+    define(lines, 'BOARD_TEMP_ADC_CHANNEL', `${profile.roles.temperature.channel}u`);
+    define(lines, 'BOARD_TEMP_ADC_PIN', cString(profile.roles.temperature.pin));
+  }
+
+  if (profile.roles.networkSpi !== null) {
+    lines.push('', '/* Network SPI role resolved from the NET_ label prefix. */');
+    define(lines, 'BOARD_NET_SPI_INSTANCE', cString(profile.roles.networkSpi.instance));
+
+    if (profile.roles.networkSpi.sckPin !== null) {
+      define(lines, 'BOARD_NET_SPI_SCK_PIN', cString(profile.roles.networkSpi.sckPin));
+    }
+
+    if (profile.roles.networkSpi.misoPin !== null) {
+      define(lines, 'BOARD_NET_SPI_MISO_PIN', cString(profile.roles.networkSpi.misoPin));
+    }
+
+    if (profile.roles.networkSpi.mosiPin !== null) {
+      define(lines, 'BOARD_NET_SPI_MOSI_PIN', cString(profile.roles.networkSpi.mosiPin));
+    }
+  }
+
+  if (profile.roles.networkUart !== null) {
+    lines.push('', '/* Network UART role resolved from the NET_ label prefix. */');
+    define(lines, 'BOARD_NET_UART_INSTANCE', cString(profile.roles.networkUart.instance));
+
+    if (profile.roles.networkUart.txPin !== null) {
+      define(lines, 'BOARD_NET_UART_TX_PIN', cString(profile.roles.networkUart.txPin));
+    }
+
+    if (profile.roles.networkUart.rxPin !== null) {
+      define(lines, 'BOARD_NET_UART_RX_PIN', cString(profile.roles.networkUart.rxPin));
+    }
+  }
+
+  if (profile.roles.networkCsPin !== null) {
+    lines.push('', '/* Network chip select resolved from the NET_CS label. */');
+    define(lines, 'BOARD_NET_CS_PIN', cString(profile.roles.networkCsPin));
+  }
+
+  lines.push('', defineCount('BOARD_OUT_COUNT', profile.roles.outputs.length));
+
+  for (const [index, output] of profile.roles.outputs.entries()) {
+    lines.push('');
+    define(lines, `BOARD_OUT${index}_PIN`, cString(output.pin));
+
+    if (output.label !== null) {
+      define(lines, `BOARD_OUT${index}_LABEL`, cString(output.label));
     }
   }
 
